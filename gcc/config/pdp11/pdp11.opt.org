@@ -1,6 +1,6 @@
 ; Options for the PDP11 port of the compiler.
 
-; Copyright (C) 2005-2024 Free Software Foundation, Inc.
+; Copyright (C) 2005-2021 Free Software Foundation, Inc.
 ;
 ; This file is part of GCC.
 ;
@@ -18,45 +18,29 @@
 ; along with GCC; see the file COPYING3.  If not see
 ; <http://www.gnu.org/licenses/>.
 
-; HeaderInclude
-; config/pdp11/pdp11-opts.h
-
 ;; mcpu=:
 
 ;; Target RejectNegative Joined Enum(target_device) Init(unk_device)
 ;;S pecify the target CPU.
 
-; Bit flags that specify the PDP-11 model we are compiling for.
-Variable
-int pdp11_model = OPTION_MASK_M11_45
-
 m10
-Target RejectNegative Negative(mbm1a) Mask(M11_10) Var(pdp11_model) Save
+Target RejectNegative Negative(mbm1)
 Generate code for an 11/10.
 
-mbm1a
-Target RejectNegative Negative(mbm1) Mask(1801BM1A) InverseMask(FPU) Var(pdp11_model) Save
-Generate code for Soviet 1801BM1A (no MUL support)
-
 mbm1
-Target RejectNegative Negative(mbm1g) Alias(mbm1a) Save
-Generate code for Soviet 1801BM1 aka 1801BM1A
-
-
-mbm1g
-Target RejectNegative Negative(mbm2) Mask(1801BM1G) InverseMask(FPU) Var(pdp11_model) Save
-Generate code for Soviet 1801BM1Г (supports MUL, not DIV)
+Target RejectNegative Mask(BM1) Negative(mbm2) InverseMask(FPU)
+Generate code for Soviet 1801BM1
 
 mbm2
-Target RejectNegative Negative(m40) Mask(1801BM2) InverseMask(FPU) Var(pdp11_model) Save
+Target RejectNegative Mask(BM2) Negative(m40) InverseMask(FPU)
 Generate code for Soviet 1801BM2.
 
 m40
-Target RejectNegative Mask(M11_40) Negative(m45)  Var(pdp11_model) Save
+Target Mask(40) Negative(m45)
 Generate code for an 11/40.
 
 m45
-Target RejectNegative Mask(M11_45) Negative(m10)  Var(pdp11_model) Save
+Target Mask(45) Negative(m10)
 Generate code for an 11/45.
 
 mac0

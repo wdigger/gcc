@@ -1,6 +1,7 @@
 ;;- Machine description for the pdp11 for GNU C compiler
 ;; Copyright (C) 1994-2024 Free Software Foundation, Inc.
 ;; Contributed by Michael K. Gschwind (mike@vlsivie.tuwien.ac.at).
+;; vim: syntax=lisp:
 
 ;; This file is part of GCC.
 
@@ -333,7 +334,7 @@
 	      (set (match_dup 0)
 		   (plus:HI (match_dup 0)
 			 (const_int -1)))])]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_SOB"
   "{
     if (GET_MODE (operands[0]) != HImode)
       FAIL;
@@ -351,7 +352,7 @@
    (set (match_dup 0)
 	(plus:HI (match_dup 0)
 		 (const_int -1)))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_SOB"
   "#"
   "&& reload_completed"
   [(parallel [(set (pc)
@@ -380,7 +381,7 @@
 	(plus:HI (match_dup 0)
 	      (const_int -1)))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
+  "SUPP_INSN_SOB && reload_completed"
   "*
 {
  rtx lb[1];
@@ -746,7 +747,7 @@
     output_asm_insn (\"mov\t(%1)+,(%0)+\", operands);
   else
     output_asm_insn (\"movb\t(%1)+,(%0)+\", operands);
-  if (TARGET_40_PLUS)
+  if (SUPP_INSN_SOB)
     output_asm_insn (\"sob\t%0,%l1\", lb);
   else
     {
@@ -756,7 +757,7 @@
   return \"\";
 }"
   [(set (attr "length")
-	(if_then_else (match_test "TARGET_40_PLUS")
+	(if_then_else (match_test "SUPP_INSN_SOB")
 		      (const_int 4)
 		      (const_int 6)))])
 
@@ -894,7 +895,7 @@
 (define_insn_and_split "extendhisi2"
   [(set (match_operand:SI 0 "nonimmediate_operand" "=o,<,r")
 	(sign_extend:SI (match_operand:HI 1 "general_operand" "g,g,g")))]
-  "TARGET_40_PLUS"
+  "TARGET_M11_40_PLUS"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0) (sign_extend:SI (match_dup 1)))
@@ -906,7 +907,7 @@
   [(set (match_operand:SI 0 "nonimmediate_operand" "=o,<,r")
 	(sign_extend:SI (match_operand:HI 1 "general_operand" "g,g,g")))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
+  "TARGET_M11_40_PLUS && reload_completed"
   "*
 {
   rtx latehalf[2];
@@ -1541,7 +1542,7 @@
   [(set (match_operand:HI 0 "nonimmediate_operand" "=rR,Q")
 	(xor:HI (match_operand:HI 1 "general_operand" "%0,0")
 		(match_operand:HI 2 "register_operand" "r,r")))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_XOR"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0)
@@ -1555,7 +1556,7 @@
 	(xor:HI (match_operand:HI 1 "general_operand" "%0,0")
 	     (match_operand:HI 2 "register_operand" "r,r")))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
+  "SUPP_INSN_XOR && reload_completed"
   "xor\t%2,%0"
   [(set_attr "length" "2,4")])
 
@@ -1668,7 +1669,7 @@
   [(set (match_operand:HI 0 "nonimmediate_operand" "=r,r")
 	(ashift:HI (match_operand:HI 1 "general_operand" "0,0")
 	               (match_operand:HI 2 "general_operand" "rR,Qi")))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_ASH"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0)
@@ -1683,8 +1684,8 @@
 	(ashift:HI (match_operand:HI 1 "general_operand" "0,0")
 		(match_operand:HI 2 "general_operand" "rR,Qi")))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
-  "ash\t%2,%0"
+  "SUPP_INSN_ASH && reload_completed"
+  "ash\t%2,%0\t"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "8")])
 
@@ -1692,7 +1693,7 @@
   [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r")
 	(ashift:SI (match_operand:SI 1 "general_operand" "0,0")
 	           (match_operand:HI 2 "general_operand" "rR,Qi")))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_ASH"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0)
@@ -1707,8 +1708,8 @@
 	(ashift:SI (match_operand:SI 1 "general_operand" "0,0")
 		(match_operand:HI 2 "general_operand" "rR,Qi")))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
-  "ashc\t%2,%0"
+  "SUPP_INSN_ASH && reload_completed"
+  "ashc\t%2,%0\t"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "8")])
 
@@ -2055,7 +2056,7 @@
   [(set (match_operand:HI 0 "register_operand" "=d,d") ; multiply regs
 	(mult:HI (match_operand:HI 1 "register_operand" "%0,0")
 		 (match_operand:HI 2 "general_operand" "rR,Qi")))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_MUL"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0) (mult:HI (match_dup 1) (match_dup 2)))
@@ -2068,7 +2069,7 @@
 	(mult:HI (match_operand:HI 1 "register_operand" "%0,0")
 	      (match_operand:HI 2 "general_operand" "rR,Qi")))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
+  "SUPP_INSN_MUL && reload_completed"
   "mul\t%2,%0"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "20")])
@@ -2078,7 +2079,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r,r")
 	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
 	         (sign_extend:SI (match_operand:HI 2 "general_operand" "rR,Qi"))))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_MUL"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0)
@@ -2093,7 +2094,7 @@
 	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
 	      (sign_extend:SI (match_operand:HI 2 "general_operand" "rR,Qi"))))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
+  "SUPP_INSN_MUL && reload_completed"
   "mul\t%2,%0"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "20")])
@@ -2132,7 +2133,7 @@
         (subreg:HI (match_dup 1) 0))
    (set (match_operand:HI 3 "register_operand" "=r")
         (subreg:HI (match_dup 1) 2))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_DIV"
   "")
 
 (define_insn_and_split "*divmodhi4"
@@ -2141,7 +2142,7 @@
 	     (match_operand:HI 2 "general_operand" "rR,Qi")))
    (set (subreg:HI (match_dup 1) 2)
 	(mod:HI (match_dup 1) (match_dup 2)))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_DIV"
   "#"
   "&& reload_completed"
   [(parallel [(set (subreg:HI (match_dup 0) 0)
@@ -2164,7 +2165,7 @@
    (set (subreg:HI (match_dup 1) 2)
 	(mod:HI (match_dup 1) (match_dup 2)))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS"
+  "SUPP_INSN_DIV"
    "div\t%2,%0"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "40")])
@@ -2231,7 +2232,7 @@
   [(match_operand:HI 0 "register_operand" "")
    (match_operand:HI 1 "register_operand" "")
    (match_operand:HI 2 "general_operand" "")]
-  "TARGET_40_PLUS"
+  "TARGET_M11_40_PLUS"
   "
 {
   operands[2] = negate_rtx (HImode, operands[2]);
@@ -2243,7 +2244,7 @@
   [(set (match_operand:HI 0 "register_operand" "=d,d")
 	(rotate:HI (match_operand:HI 1 "register_operand" "0,0")
 	           (match_operand:HI 2 "general_operand" "rR,Qi")))]
-  "TARGET_40_PLUS"
+  "TARGET_M11_40_PLUS"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0)
@@ -2258,8 +2259,8 @@
 	(rotate:HI (match_operand:HI 1 "register_operand" "0,0")
 		   (match_operand:HI 2 "general_operand" "rR,Qi")))
    (clobber (reg:CC CC_REGNUM))]
-  "TARGET_40_PLUS && reload_completed"
-  "ashc\t%2,%0"
+  "SUPP_INSN_ASH && reload_completed"
+  "ashc\t%2,%0\t; limit 2261"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "8")])
 

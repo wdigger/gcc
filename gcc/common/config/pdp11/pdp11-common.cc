@@ -39,16 +39,39 @@ pdp11_handle_option (struct gcc_options *opts,
   switch (code)
     {
     case OPT_m10:
-      opts->x_target_flags &= ~(MASK_40 | MASK_45 | MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_target_flags &= ~(MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_pdp11_model = OPTION_MASK_M11_10;
       return true;
 
     case OPT_m40:
-      opts->x_target_flags &= ~(MASK_45 | MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_target_flags &= ~(MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_pdp11_model = OPTION_MASK_M11_40;
+      return true;
+
+    case OPT_mbm1g:
+      opts->x_target_flags &= ~(MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_pdp11_model = OPTION_MASK_1801BM1G;
+      return true;
+
+//    case OPT_mbm1:
+    case OPT_mbm1a:
+      opts->x_target_flags &= ~(MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_pdp11_model = OPTION_MASK_1801BM1A;
+      return true;
+
+    case OPT_mbm2:
+      opts->x_target_flags &= ~(MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_pdp11_model = OPTION_MASK_1801BM2;
+      return true;
+
+    case OPT_m45:
+      opts->x_target_flags |= (MASK_FPU | MASK_AC0 | MASK_SPLIT);
+      opts->x_pdp11_model = OPTION_MASK_M11_45;
       return true;
 
     case OPT_mfpu:
-      opts->x_target_flags &= ~MASK_40;
-      opts->x_target_flags |= MASK_45;
+      opts->x_pdp11_model &= ~(OPTION_MASK_M11_40 | OPTION_MASK_1801BM1A | OPTION_MASK_1801BM1G | OPTION_MASK_1801BM2);
+      opts->x_pdp11_model |= OPTION_MASK_M11_45;
       return true;
       
     case OPT_msoft_float:
@@ -56,8 +79,8 @@ pdp11_handle_option (struct gcc_options *opts,
       return true;
 
     case OPT_msplit:
-      opts->x_target_flags &= ~MASK_40;
-      opts->x_target_flags |= MASK_45;
+      opts->x_pdp11_model &= ~(OPTION_MASK_M11_40 |  OPTION_MASK_1801BM1A | OPTION_MASK_1801BM1G | OPTION_MASK_1801BM2);
+      opts->x_pdp11_model |= OPTION_MASK_M11_45;
       return true;
 
     case OPT_munix_asm:
@@ -86,7 +109,10 @@ pdp11_option_init_struct (struct gcc_options *opts)
 
 #undef TARGET_DEFAULT_TARGET_FLAGS
 #define TARGET_DEFAULT_TARGET_FLAGS \
-  (MASK_FPU | MASK_45 | TARGET_UNIX_ASM_DEFAULT)
+  (MASK_FPU | TARGET_UNIX_ASM_DEFAULT)
+#undef TARGET_DEFAULT_TARGET_CPU_MODEL
+#define TARGET_DEFAULT_TARGET_CPU_MODEL \
+  (OPTION_MASK_M11_45)
 #undef TARGET_HANDLE_OPTION
 #define TARGET_HANDLE_OPTION pdp11_handle_option
 #undef TARGET_OPTION_INIT_STRUCT

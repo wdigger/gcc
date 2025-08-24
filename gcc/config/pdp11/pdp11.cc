@@ -332,9 +332,10 @@ pdp11_expand_prologue (void)
   unsigned regno;
   rtx x, via_ac = NULL;
 
+  // fprintf(stderr, "<pdp11_expand_prologue:target_flags %04x :pdp11_model %04x>\n", target_flags, pdp11_model);
   /* If we are outputting code for main, the switch FPU to the
      right mode if TARGET_FPU.  */
-  if (MAIN_NAME_P (DECL_NAME (current_function_decl)) && TARGET_FPU)
+  if (MAIN_NAME_P (DECL_NAME (current_function_decl)) && TARGET_FPU && (!TARGET_BM_ANY))
     {
       emit_insn (gen_setd ());
       emit_insn (gen_seti ());
@@ -1938,7 +1939,7 @@ pdp11_expand_shift (rtx *operands, rtx (*shift_sc) (rtx, rtx, rtx),
   
   if (CONST_INT_P (operands[2]) && pdp11_small_shift (INTVAL (operands[2])))
     emit_insn ((*shift_sc) (operands[0], operands[1], operands[2]));
-  else if (TARGET_40_PLUS)
+  else if (SUPP_INSN_ASH)
     return false;
   else
     {
@@ -1981,7 +1982,7 @@ pdp11_assemble_shift (rtx *operands, machine_mode m, int code)
   pdp11_action action[2];
   const bool small = CONST_INT_P (operands[2]) && pdp11_small_shift (INTVAL (operands[2]));
 
-  gcc_assert (small || !TARGET_40_PLUS);
+  gcc_assert (small || !(SUPP_INSN_ASH));
 
   if (m == E_SImode)
     {

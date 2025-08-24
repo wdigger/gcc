@@ -1,6 +1,7 @@
 ;;- Predicate definitions for the pdp11 for GNU C compiler
 ;; Copyright (C) 1994-2024 Free Software Foundation, Inc.
 ;; Contributed by Michael K. Gschwind (mike@vlsivie.tuwien.ac.at).
+;; vim: syntax=lisp
 
 ;; This file is part of GCC.
 
