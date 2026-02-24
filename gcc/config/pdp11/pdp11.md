@@ -271,6 +271,15 @@
    output_asm_insn ("tst\t%0", exops[1]);
   else
    output_asm_insn ("cmp\t%0,%1", exops[1]);
+   
+  // Correct V/N flags so signed comparisons work
+  output_asm_insn ("cln", NULL);
+  if (!CONST_INT_P (exops[1][1]) || INTVAL (exops[1][1]) != 0) {
+   output_asm_insn ("clv", NULL);
+   output_asm_insn ("bcc\t%l0", lb);
+   output_asm_insn ("sen", NULL);
+  }
+
   output_asm_label (lb[0]);
   fputs (":\n", asm_out_file);
 

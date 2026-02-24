@@ -518,6 +518,27 @@ pdp11_expand_operands (rtx *operands, rtx exops[][2],
 	  && REGNO (XEXP (XEXP (operands[0], 0), 0)) == STACK_POINTER_REGNUM
 	  && reg_overlap_mentioned_p (stack_pointer_rtx, operands[1]))
 	sameoff = true;
+
+      /* DMB - catch for source [1] is an indirect access via a register that
+         is also used as the destination [0] */
+      if (GET_CODE (operands[0]) == REG && GET_CODE (operands[1]) == MEM) {
+        int dstreg = REGNO (operands[0]);
+        int srcreg = -1;
+        if (GET_CODE (XEXP (operands[1], 0)) == REG) {
+          srcreg = REGNO (XEXP (operands[1], 0));
+        } else if (GET_CODE (XEXP (operands[1], 0)) == PLUS) {
+          if (GET_CODE (XEXP (XEXP (operands[1], 0), 0)) == REG) {
+            srcreg = REGNO (XEXP (XEXP (operands[1], 0), 0));
+          } else if (GET_CODE (XEXP (XEXP (operands[1], 0), 1)) == REG) {
+            srcreg = REGNO (XEXP (XEXP (operands[1], 0), 1));
+          }
+        }
+        /* If the source and destination registers are the same, force
+           little endian instruction order */
+        if (srcreg == dstreg) {
+          useorder = little;
+        }
+      }
     }
 
   /* If the caller didn't specify order, use the one we computed,
