@@ -36,9 +36,13 @@ along with GCC; see the file COPYING3.  If not see
 	builtin_define_with_int_value ("__pdp11_int", 16);	\
       else							\
 	builtin_define_with_int_value ("__pdp11_int", 32);	\
-      if (TARGET_40)						\
+      if ((pdp11_model & (TARGET_1801BM1A | TARGET_1801BM1G))!=0)	\
+	builtin_define_with_int_value ("__pdp11_model", 31);	\
+      else if (TARGET_1801BM2)					\
+	builtin_define_with_int_value ("__pdp11_model", 32);	\
+      else if (TARGET_M11_40)						\
 	builtin_define_with_int_value ("__pdp11_model", 40);	\
-      else if (TARGET_45)					\
+      else if (TARGET_M11_45)					\
 	builtin_define_with_int_value ("__pdp11_model", 45);	\
       else							\
 	builtin_define_with_int_value ("__pdp11_model", 10);	\
@@ -52,8 +56,23 @@ along with GCC; see the file COPYING3.  If not see
 #undef PREFERRED_DEBUGGING_TYPE
 #define PREFERRED_DEBUGGING_TYPE NO_DEBUG
 
-#define TARGET_40_PLUS		(TARGET_40 || TARGET_45)
-#define TARGET_10		(! TARGET_40_PLUS)
+#define TARGET_M11_40_PLUS		\
+    (TARGET_1801BM2 || TARGET_M11_40 || TARGET_M11_45)
+#define TARGET_BM_ANY	    \
+    ((pdp11_model & (OPTION_MASK_1801BM1A| \
+                     OPTION_MASK_1801BM1G |OPTION_MASK_1801BM2)) != 0)
+
+#define SUPP_INSN_SOB (!TARGET_M11_10)
+#define SUPP_INSN_XOR (!TARGET_M11_10)
+#define SUPP_INSN_MUL \
+    ((pdp11_model & (OPTION_MASK_1801BM1G| OPTION_MASK_1801BM2| \
+                     OPTION_MASK_M11_40| OPTION_MASK_M11_45)) != 0)
+#define SUPP_INSN_DIV \
+    ((pdp11_model & (OPTION_MASK_1801BM2| \
+                     OPTION_MASK_M11_40| OPTION_MASK_M11_45)) != 0)
+#define SUPP_INSN_ASH \
+    ((pdp11_model & (OPTION_MASK_1801BM2| OPTION_MASK_M11_40| \
+                     OPTION_MASK_M11_45)) != 0)
 
 #define TARGET_UNIX_ASM_DEFAULT	0
 
