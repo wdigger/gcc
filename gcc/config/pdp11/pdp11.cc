@@ -2085,8 +2085,15 @@ pdp11_assemble_shift (rtx *operands, machine_mode m, int code)
   if (!small)
     {
       /* Loop case, emit the count-down and branch if not done.  */
-      output_asm_insn ("dec\t%2", operands);
-      output_asm_insn ("bne\t%l0", lb);
+      if (SUPP_INSN_SOB) {
+        rtx tmpops[2];
+        tmpops[0] = operands[2];
+        tmpops[1] = lb[0];
+        output_asm_insn ("sob\t%0, %l1", tmpops);
+      } else {
+        output_asm_insn ("dec\t%2", operands);
+        output_asm_insn ("bne\t%l0", lb);
+      }
     }
   return "";
 }
