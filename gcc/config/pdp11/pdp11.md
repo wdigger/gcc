@@ -2083,27 +2083,59 @@
    (set_attr "base_cost" "20")])
 
 ;; 32 bit result from 16 bit operands
-(define_insn_and_split "mulhisi3"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
-	         (sign_extend:SI (match_operand:HI 2 "general_operand" "rR,Qi"))))]
+;; The hardware MUL instruction is "MUL src,Rn": Rn (even) must hold one
+;; of the two 16-bit multiplicands *before* the instruction executes, and
+;; receives the 32-bit product in Rn:Rn+1 afterwards.  This used to be
+;; expressed by tying operand 1 (HImode) to operand 0 (SImode) via a plain
+;; matching constraint ("%0,0").  Reload/LRA does not reliably honor a
+;; digit-matching constraint between operands of different sizes: it can
+;; satisfy the tie by placing operand 1 in Rn+1 (the second, odd half of
+;; operand 0's hard-register pair) instead of Rn itself, leaving Rn - the
+;; register the hardware actually reads - uninitialized.  This silently
+;; miscomputes the product whenever the operands' low and high halves
+;; differ (e.g. mulhisi3(0x8001, 3) came out wrong, while mulhisi3(-1,-1)
+;; happened to look right because for -1 the low and high halves of each
+;; operand are identical).
+;;
+;; To avoid the cross-size tie, expand into an explicit move of operand 1
+;; into the low word (word offset 0, per WORDS_BIG_ENDIAN) of a fresh
+;; SImode pseudo, then let the real multiply insn reference that same
+;; register via match_dup/subreg instead of via a separately allocated
+;; tied operand.
+(define_expand "mulhisi3"
+  [(set (match_operand:SI 0 "register_operand")
+	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand"))
+	         (sign_extend:SI (match_operand:HI 2 "general_operand"))))]
+  "SUPP_INSN_MUL"
+{
+  rtx tmp = gen_reg_rtx (SImode);
+  emit_move_insn (gen_rtx_SUBREG (HImode, tmp, 0), operands[1]);
+  emit_insn (gen_mulhisi3_1 (tmp, operands[2]));
+  emit_move_insn (operands[0], tmp);
+  DONE;
+})
+
+(define_insn_and_split "mulhisi3_1"
+  [(set (match_operand:SI 0 "register_operand" "+r,r")
+	(mult:SI (sign_extend:SI (subreg:HI (match_dup 0) 0))
+	         (sign_extend:SI (match_operand:HI 1 "general_operand" "rR,Qi"))))]
   "SUPP_INSN_MUL"
   "#"
   "&& reload_completed"
   [(parallel [(set (match_dup 0)
-		   (mult:SI (sign_extend:SI (match_dup 1))
-			 (sign_extend:SI (match_dup 2))))
+		   (mult:SI (sign_extend:SI (subreg:HI (match_dup 0) 0))
+			 (sign_extend:SI (match_dup 1))))
 	      (clobber (reg:CC CC_REGNUM))])]
   ""
   [(set_attr "length" "2,4")])
 
-(define_insn "mulhisi3<cc_cc>"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
-	      (sign_extend:SI (match_operand:HI 2 "general_operand" "rR,Qi"))))
+(define_insn "*mulhisi3_1_insn"
+  [(set (match_operand:SI 0 "register_operand" "+r,r")
+	(mult:SI (sign_extend:SI (subreg:HI (match_dup 0) 0))
+	      (sign_extend:SI (match_operand:HI 1 "general_operand" "rR,Qi"))))
    (clobber (reg:CC CC_REGNUM))]
   "SUPP_INSN_MUL && reload_completed"
-  "mul\t%2,%0"
+  "mul\t%1,%0"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "20")])
 
