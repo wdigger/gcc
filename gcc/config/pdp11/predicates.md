@@ -59,3 +59,35 @@
 ;; Accept any comparison valid for CCNZmode
 (define_predicate "ccnz_operator"
   (match_code "eq,ne,ge,lt"))
+
+;; Accept the same operands as general_operand, but for SImode/DImode
+;; reject any MEM whose address has a side effect (auto-increment or
+;; auto-decrement).  cmpsi/cmpdi emulate their multi-word compare by
+;; computing the address of each word separately (pdp11_expand_operands
+;; in pdp11.cc), so a side-effecting address -- which only adjusts the
+;; register by one word, applied once -- can't correctly supply two
+;; different word offsets; cmpsi/cmpdi's own constraints ("D"/"Q")
+;; already exclude such addresses for exactly this reason.  Without this
+;; predicate, cbranch<mode>4 (which shares one pattern across QI/HI/SI/DI
+;; via the QHSDint iterator) accepts these addresses too, via the same
+;; unrestricted "general_operand" used by the narrower single-word
+;; compares that legitimately do allow them.  That mismatch lets the
+;; auto_inc_dec pass fold an autoincrement candidate straight into a
+;; SImode/DImode compare -- auto_inc_dec only backs off when recognizing
+;; the consuming pattern actually fails, so as long as cbranch<mode>4
+;; itself accepts the fold, it goes through -- producing an insn that
+;; only fails cmpsi/cmpdi's stricter constraints much later, at
+;; cprop_hardreg, as an ICE in extract_constrain_insn instead of being
+;; rejected cleanly up front.
+(define_predicate "cmp_operand"
+  (match_operand 0 "general_operand")
+{
+  if ((mode == SImode || mode == DImode) && MEM_P (op))
+    {
+      enum rtx_code code = GET_CODE (XEXP (op, 0));
+      if (code == PRE_DEC || code == POST_INC
+	  || code == PRE_MODIFY || code == POST_MODIFY)
+	return false;
+    }
+  return true;
+})

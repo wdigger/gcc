@@ -446,8 +446,8 @@
 (define_insn_and_split "cbranch<mode>4"
   [(set (pc)
 	(if_then_else (match_operator 0 "ordered_comparison_operator"
-		       [(match_operand:QHSDint 1 "general_operand" "g")
-			(match_operand:QHSDint 2 "general_operand" "g")])
+		       [(match_operand:QHSDint 1 "cmp_operand" "g")
+			(match_operand:QHSDint 2 "cmp_operand" "g")])
 		      (label_ref (match_operand 3 "" ""))
 		      (pc)))]
   ""
