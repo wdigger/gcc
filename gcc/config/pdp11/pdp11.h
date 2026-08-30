@@ -664,3 +664,15 @@ extern int current_first_parm_offset;
 /* pdp11-unknown-aout target has no support of C99 runtime */
 #undef TARGET_LIBC_HAS_FUNCTION
 #define TARGET_LIBC_HAS_FUNCTION no_c99_libc_has_function
+
+#ifdef TARGET_RT11_DEFAULTS
+/* For pdp11-uknc-rt11 (see config.gcc), a plain link should just work
+   without -nostartfiles: pull in the RT-11 startup (sets SP from the SAV
+   header, builds argc/argv from RT-11's own command-line chain area) built
+   as crt0rt.o/parse_args.o from libgcc/config/pdp11/{crt0rt.s,parse_args.c}
+   via libgcc/config/pdp11/t-pdp11rt11.  This overrides gcc.cc's generic
+   STARTFILE_SPEC, which looks for a "crt0.o" this target has never
+   provided.  */
+#undef STARTFILE_SPEC
+#define STARTFILE_SPEC "crt0rt.o%s parse_args.o%s"
+#endif

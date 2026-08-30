@@ -2960,6 +2960,31 @@ or1k*-*-*)
 		;;
 	esac
 	;;
+pdp11-uknc-rt11*)
+	# Landing spot for a future newlib port targeting RT-11 on real
+	# UKNC hardware (newlib's own configure.host selects a
+	# libc/sys/<os> directory by matching this triple's OS component,
+	# which "aout" below was never meant to carry).  It exists as its
+	# own arm so it can grow independently without disturbing
+	# pdp11-uknc-aout.
+	#
+	# TARGET_RT11_DEFAULTS additionally makes STARTFILE_SPEC
+	# (pdp11.h) pull in crt0rt.o/parse_args.o -- built from
+	# libgcc/config/pdp11/{crt0rt.s,parse_args.c} via
+	# libgcc/config/pdp11/t-pdp11rt11 -- so a plain link for this OS
+	# gets a working RT-11 startup (SP from the SAV header, argc/argv
+	# from RT-11's own command-line chain area) without needing
+	# -nostartfiles and a hand-linked crt0rt.o, the way the aout OS
+	# still does.
+	tm_file="${tm_file} newlib-stdint.h"
+	tm_defines="${tm_defines} TARGET_UKNC_DEFAULTS=1 TARGET_RT11_DEFAULTS=1"
+	use_gcc_stdint=wrap
+	;;
+pdp11-uknc-*)
+	tm_file="${tm_file} newlib-stdint.h"
+	tm_defines="${tm_defines} TARGET_UKNC_DEFAULTS=1"
+	use_gcc_stdint=wrap
+	;;
 pdp11-*-*)
 	tm_file="${tm_file} newlib-stdint.h"
 	use_gcc_stdint=wrap

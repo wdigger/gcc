@@ -107,9 +107,19 @@ pdp11_option_init_struct (struct gcc_options *opts)
   opts->x_flag_signaling_nans = 0;
 }
 
+#ifdef TARGET_UKNC_DEFAULTS
+/* Real UKNC hardware has no FPU coprocessor, so -msoft-float is the
+   correct default for this vendor (see config.gcc) -- unlike the
+   generic pdp11 default below, which assumes an 11/45 with hardware
+   floating point.  -mfpu still works to override this explicitly.  */
+#undef TARGET_DEFAULT_TARGET_FLAGS
+#define TARGET_DEFAULT_TARGET_FLAGS \
+  (TARGET_UNIX_ASM_DEFAULT)
+#else
 #undef TARGET_DEFAULT_TARGET_FLAGS
 #define TARGET_DEFAULT_TARGET_FLAGS \
   (MASK_FPU | TARGET_UNIX_ASM_DEFAULT)
+#endif
 #undef TARGET_DEFAULT_TARGET_CPU_MODEL
 #define TARGET_DEFAULT_TARGET_CPU_MODEL \
   (OPTION_MASK_M11_45)

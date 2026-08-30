@@ -149,6 +149,7 @@ decode_pdp11_d (const struct real_format *fmt ATTRIBUTE_UNUSED,
 }
 
 static const char *singlemove_string (rtx *);
+static int pdp11_reg_save_size (void);
 static bool pdp11_assemble_integer (rtx, unsigned int, int);
 static bool pdp11_rtx_costs (rtx, machine_mode, int, int, int *, bool);
 static int pdp11_addr_cost (rtx, machine_mode, addr_space_t, bool);
@@ -379,6 +380,9 @@ pdp11_expand_prologue (void)
   if (fsize)
     emit_insn (gen_addhi3 (stack_pointer_rtx, stack_pointer_rtx,
 			   GEN_INT (-fsize)));
+
+  if (flag_stack_usage_info)
+    current_function_static_stack_size = pdp11_reg_save_size () + fsize;
 }
 
 /* Generate epilogue.  This uses the frame pointer to pop the local
@@ -2335,6 +2339,14 @@ pdp11_option_override (void)
       targetm.asm_out.open_paren  = "<";
       targetm.asm_out.close_paren = ">";
     }
+
+#ifdef TARGET_UKNC_DEFAULTS
+  /* Configured for vendor "uknc" (pdp11-uknc-*): default to the Soviet
+     1801BM2 CPU (matches the actual UKNC hardware), unless the user
+     explicitly overrode it.  */
+  if (!global_options_set.x_pdp11_model)
+    pdp11_model = OPTION_MASK_1801BM2;
+#endif
 }
 
 static void

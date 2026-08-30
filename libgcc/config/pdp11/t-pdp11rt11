@@ -1,0 +1,13 @@
+# Build crt0rt.o and parse_args.o (see gcc/config/pdp11/pdp11.h's
+# STARTFILE_SPEC, guarded by TARGET_RT11_DEFAULTS) for pdp11-uknc-rt11:
+# the RT-11 startup that sets SP from the SAV header and builds argc/argv
+# from RT-11's own command-line chain area (see crt0rt.s's own comments),
+# plus the plain C command-line tokenizer it calls into.
+
+crt0rt.o: $(srcdir)/config/pdp11/crt0rt.s
+	$(GCC_FOR_TARGET) $(INCLUDES) $(CFLAGS) -Wa,-mno-fpu,-mlimited-eis,-pic \
+		-c $(srcdir)/config/pdp11/crt0rt.s -o crt0rt.o
+
+parse_args.o: $(srcdir)/config/pdp11/parse_args.c
+	$(GCC_FOR_TARGET) $(INCLUDES) $(CFLAGS) -fomit-frame-pointer -msoft-float \
+		-O2 -c $(srcdir)/config/pdp11/parse_args.c -o parse_args.o

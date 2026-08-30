@@ -607,6 +607,10 @@ case $1 in
 				basic_machine=a29k-amd
 				basic_os=udi
 				;;
+			uknc)
+				basic_machine=pdp11-uknc
+				basic_os=aout
+				;;
 			ultra3)
 				basic_machine=a29k-nyu
 				basic_os=sym1
@@ -1732,7 +1736,7 @@ case $os in
 	     | mirbsd* | netbsd* | dicos* | openedition* | ose* \
 	     | bitrig* | openbsd* | secbsd* | solidbsd* | libertybsd* | os108* \
 	     | ekkobsd* | freebsd* | riscix* | lynxos* | os400* \
-	     | bosx* | nextstep* | cxux* | aout* | elf* | oabi* \
+	     | bosx* | nextstep* | cxux* | aout* | elf* | oabi* | rt11* \
 	     | ptx* | coff* | ecoff* | winnt* | domain* | vsta* \
 	     | udi* | lites* | ieee* | go32* | aux* | hcos* \
 	     | chorusrdb* | cegcc* | glidix* | serenity* \

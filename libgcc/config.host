@@ -1205,6 +1205,10 @@ or1k-*-*)
 	tmake_file="$tmake_file or1k/t-or1k or1k/t-crtstuff"
 	tmake_file="$tmake_file t-softfp-sfdf t-softfp"
 	;;
+pdp11-uknc-rt11*)
+	tmake_file="pdp11/t-pdp11 pdp11/t-pdp11rt11 t-fdpbit"
+	extra_parts="$extra_parts crt0rt.o parse_args.o"
+	;;
 pdp11-*-*)
 	tmake_file="pdp11/t-pdp11 t-fdpbit"
 	;;
