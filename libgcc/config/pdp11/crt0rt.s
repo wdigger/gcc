@@ -12,6 +12,18 @@ cmdbuf_max = 80
 start:
         mov   @$042, sp   // SP comes from the SAV header (RT-11 sets it before we start)
 
+        // RT-11 doesn't clear memory between programs, so a previous job's
+        // leftovers can still be sitting in our .bss; zero it before touching
+        // any of our own statics (including cmdbuf/argv below).  __bss_start
+        // and _end come from the linker script (ld/scripttempl/pdp11rt11.sc).
+        mov   $__bss_start, r1
+        mov   $_end, r2
+4$:     cmp   r1, r2
+        bge   5$
+        clrb  (r1)+
+        br    4$
+5$:
+
         // RT-11's KMON, when it runs a program via RUN (or by typing its name
         // directly), copies whatever followed the program name on that command
         // into the fixed "chain area": a byte count at address 0510 and the
