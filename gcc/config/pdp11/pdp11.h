@@ -672,7 +672,18 @@ extern int current_first_parm_offset;
    as crt0rt.o/parse_args.o from libgcc/config/pdp11/{crt0rt.s,parse_args.c}
    via libgcc/config/pdp11/t-pdp11rt11.  This overrides gcc.cc's generic
    STARTFILE_SPEC, which looks for a "crt0.o" this target has never
-   provided.  */
+   provided.
+
+   printf_float_stub.o rides along here too: this backend can't support
+   weak symbols, so newlib-nano's own weak _printf_float (meant to keep
+   dtoa/mprec/soft-double out of a program that never formats a float)
+   resolves as an ordinary strong reference instead, pulling in ~36KB of
+   float-formatting machinery into EVERY program that calls printf, even
+   with only %d in its format strings.  Placing this stub's own
+   _printf_float on the link line ahead of -lc satisfies that reference
+   before the archive is even scanned, so its real (large) implementation
+   is never pulled in -- see printf_float_stub.c's own header comment for
+   the full story and how to opt back into real %f/%e/%g support.  */
 #undef STARTFILE_SPEC
-#define STARTFILE_SPEC "crt0rt.o%s parse_args.o%s"
+#define STARTFILE_SPEC "crt0rt.o%s parse_args.o%s printf_float_stub.o%s"
 #endif

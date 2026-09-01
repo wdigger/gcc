@@ -1207,7 +1207,7 @@ or1k-*-*)
 	;;
 pdp11-uknc-rt11*)
 	tmake_file="pdp11/t-pdp11 pdp11/t-pdp11rt11 t-fdpbit"
-	extra_parts="$extra_parts crt0rt.o parse_args.o"
+	extra_parts="$extra_parts crt0rt.o parse_args.o printf_float_stub.o"
 	;;
 pdp11-*-*)
 	tmake_file="pdp11/t-pdp11 t-fdpbit"
