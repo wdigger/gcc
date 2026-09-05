@@ -1786,8 +1786,21 @@
     {
       if (<QHSint:e_mname> == E_QImode)
         {
+          /* aslhi_op is ASH: a positive count shifts left, negative
+             shifts right.  This is a logical *right* shift, so the
+             count must be negated here -- see ashr<mode>3's own
+             QImode case above, which does the same thing for the
+             arithmetic right shift.  Without this, whenever
+             pdp11_expand_shift's small-constant fast path doesn't
+             apply (shift counts >= 4 -- see pdp11_small_shift), this
+             path silently emitted a *left* shift instead of a right
+             one: a wrong but plausible-looking result (same operands,
+             same instruction count), not a build failure, so this
+             went unnoticed until traced back from a C testcase that
+             compared (b >> 4) against its expected value.  */
+          rtx neg_amount = negate_rtx (HImode, operands[2]);
           r = copy_to_mode_reg (HImode, gen_rtx_ZERO_EXTEND (HImode, operands[1]));
-          emit_insn (gen_aslhi_op (r, r, operands[2]));
+          emit_insn (gen_aslhi_op (r, r, neg_amount));
           emit_insn (gen_movqi (operands[0], gen_rtx_SUBREG (QImode, r, 0)));
         }
       else
