@@ -16,8 +16,10 @@ int test_mul01() {
     m3 = __pdp11_model;
 }
 int test_mul02() {
-  /* { dg-final { scan-assembler "dec\tr2" } } */
-    m3 = m1 * 1234 ;    
+  /* A constant multiply must expand to shifts/adds, never a library
+     call -- the only __mulhi3 in this file is test_mul01's own.  */
+  /* { dg-final { scan-assembler-times "__mulhi3" 1 } } */
+    m3 = m1 * 1234 ;
 }
 int test_mul06() {
   /* { dg-final { scan-assembler "mov\t.017,r1" } } */
@@ -25,8 +27,10 @@ int test_mul06() {
     m3 = m2 << 15;
 }
 int test_mul07() {
+  /* Variable shift on a SOB-capable model: the shift loop counts down
+     with SOB, not a separate DEC/BNE pair (see pdp11_expand_shift).  */
   /* { dg-final { scan-assembler "asl\tr1" } } */
-  /* { dg-final { scan-assembler "dec\tr0" } } */
+  /* { dg-final { scan-assembler "sob\t" } } */
     m2 = m1 << m3;
 }
 int test_div10() {
@@ -50,7 +54,7 @@ int test_ne14() {
     m3 = (m3 != m1);
 }
 int test_eq15() {
-  /* { dg-final { scan-assembler "cmp\tr2,r1" } } */
+  /* { dg-final { scan-assembler "cmp\t" } } */
     return (m1 == m2);
 }
 

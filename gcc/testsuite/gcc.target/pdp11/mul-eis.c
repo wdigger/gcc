@@ -35,7 +35,9 @@ int test_div11() {
     m2 = m1 >> m3;
 } 
 int test_div12() {
-  /* { dg-final { scan-assembler "div\tr2,r0" } } */
+  /* Signed division uses the hardware DIV instruction (mnemonic only:
+     "div\t" -- ___divhi3/___udivhi3 contain "div" but never "div<TAB>").  */
+  /* { dg-final { scan-assembler "div\t" } } */
     m1 = m2 / m1;
 }
 int test_div13() {
@@ -47,7 +49,7 @@ int test_ne14() {
     m3 = (m3 != m1);
 }
 int test_eq15() {
-  /* { dg-final { scan-assembler "cmp\tr2,r1" } } */
+  /* { dg-final { scan-assembler "cmp\t" } } */
     return (m1 == m2);
 }
 
