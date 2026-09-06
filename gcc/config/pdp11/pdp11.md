@@ -1809,9 +1809,36 @@
           emit_insn (gen_lshiftrt<mode>_sc (r, operands[1], const1_rtx));
           if (GET_CODE (operands[2]) != CONST_INT)
             {
+              /* Guard against a runtime count of 0.  The two-step
+                 trick here -- one logical-shift bit first, to clear
+                 the sign bit safely, then an arithmetic shift for the
+                 remaining 'count - 1' bits -- computes n = count - 1
+                 unconditionally.  When count is 0 that wraps to -1
+                 (0xffff); ashr<mode>3 negates its shift-amount operand
+                 before handing it to the ASH instruction, so n = -1
+                 becomes ASH by +1, i.e. a *left* shift by one bit --
+                 silently clearing operand1's low bit instead of
+                 leaving operand1 untouched.  A wrong but
+                 plausible-looking result (no build failure, no
+                 crash), so this went unnoticed until traced back from
+                 a C testcase that compared a variable-count (b >> n)
+                 against its expected value for n == 0.  Skip the
+                 trick entirely and copy operand1 through unshifted
+                 when count <= 0, the same convention
+                 pdp11_expand_shift's own base-machine loop path
+                 already uses for this identical edge case (see
+                 there).  */
+              rtx_code_label *lb = gen_label_rtx ();
+              rtx test;
+
+              emit_move_insn (operands[0], operands[1]);
+              test = gen_rtx_LE (HImode, operands[2], const0_rtx);
+              emit_jump_insn (gen_cbranchhi4 (test, operands[2], const0_rtx, lb));
               n = gen_reg_rtx (HImode);
               emit_insn (gen_addhi3 (n, operands [2], GEN_INT (-1)));
               emit_insn (gen_ashr<mode>3 (operands[0], r, n));
+              emit_label (lb);
+              emit_use (stack_pointer_rtx);
             }
           else
             emit_insn (gen_asl<QHSint:hmode>_op (operands[0], r,
