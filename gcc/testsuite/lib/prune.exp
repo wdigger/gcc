@@ -68,6 +68,13 @@ proc prune_gcc_output { text } {
     regsub -all "(^|\n)\[^\n\]*: warning: -f(pic|PIC) ignored for target\[^\n\]*" $text "" text
     regsub -all "(^|\n)\[^\n\]*: warning: -f(pic|PIC)( and -fpic are| is)? not supported\[^\n\]*" $text "" text
 
+    # Ignore the driver/cc1 warning a target with no debug-info support
+    # (pdp11 a.out) emits for every -g: torture runs -O3 -g and -Og -g
+    # unconditionally, and dg-options of many tests carry -g too, so
+    # without this every such run is an "excess errors" FAIL that hides
+    # the real ones (~1300 of ~2000 FAILs on pdp11-uknc-rt11 were this).
+    regsub -all "(^|\n)\[^\n\]*: warning: target system does not support debug output\[^\n\]*" $text "" text
+
     # Ignore errata warning from IA64 assembler.
     regsub -all "(^|\n)\[^\n\]*: Additional NOP may be necessary to workaround Itanium processor A/B step errata" $text "" text
     regsub -all "(^|\n)\[^\n*\]*: Assembler messages:\[^\n\]*" $text "" text
