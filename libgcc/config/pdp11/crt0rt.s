@@ -12,6 +12,32 @@ cmdbuf_max = 80
 start:
         mov   @$042, sp   // SP comes from the SAV header (RT-11 sets it before we start)
 
+        // That header value is only a link-time guess (max(16896, this
+        // program's own _end) -- see bfd/sav-pdp11.c's own
+        // sav_pdp11_write_object_contents(), which has no idea how much
+        // memory the resident monitor/drivers on the machine this actually
+        // boots on leave free). .SETTOP (EMT 354) asks the monitor for the
+        // *real* top of memory instead: R0 in is the requested address, R0
+        // out is the actual highest legal address for this job -- never
+        // higher than requested, silently clamped down if the request was
+        // too big (RT-11 System Macro Library Manual, .SETTOP: "the address
+        // returned will be the highest legal address for the job, not the
+        // requested address"). Requesting the theoretical maximum
+        // (0177776, the highest even address) and taking whatever comes
+        // back is the documented way to discover that ceiling at runtime.
+        //
+        // Guarded with a compare rather than trusting the EMT result
+        // outright: if .SETTOP's answer is somehow *not higher* than the
+        // header value already in SP (e.g. this ROM's own monitor/drivers
+        // turn out to leave less room than sav-pdp11.c assumed), keep the
+        // link-time SP instead of moving backwards.
+        mov   $0177776, r0
+        emt   0354
+        cmp   r0, sp
+        blos  6$          // r0 <= sp (unsigned): keep the link-time SP
+        mov   r0, sp
+6$:
+
         // RT-11 doesn't clear memory between programs, so a previous job's
         // leftovers can still be sitting in our .bss; zero it before touching
         // any of our own statics (including cmdbuf/argv below).  __bss_start
