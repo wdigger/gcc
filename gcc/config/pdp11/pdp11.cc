@@ -46,6 +46,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "builtins.h"
 #include "explow.h"
 #include "expmed.h"
+#include "diagnostic-core.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -2356,7 +2357,20 @@ pdp11_asm_named_section (const char *name, unsigned int flags,
   const char *rwro = (flags & SECTION_WRITE) ? "rw" : "ro";
   const char *insdat = (flags & SECTION_CODE) ? "i" : "d";
 
-  gcc_assert (TARGET_DEC_ASM);
+  /* Only the DEC assembler has named sections (.psect); the GNU a.out
+     assembler has just .text/.data/.bss.  Anything that asks for a
+     named section anyway -- -flto's own .gnu.lto_* sections being the
+     common case, but __attribute__((section)) reaches here too via a
+     different diagnostic -- used to hit a gcc_assert here, i.e. an ICE
+     with a "please submit a bug report" for what is really an
+     unsupported-feature situation.  Report it as such instead.  */
+  if (!TARGET_DEC_ASM)
+    {
+      sorry ("named section %qs is not supported with the GNU assembler "
+	     "on this target (only the DEC assembler has %<.psect%>)",
+	     name);
+      return;
+    }
   fprintf (asm_out_file, "\t.psect\t%s,con,%s,%s\n", name, insdat, rwro);
 }
 
