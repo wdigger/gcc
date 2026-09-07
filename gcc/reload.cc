@@ -4943,19 +4943,50 @@ find_reloads_address (machine_mode mode, rtx *memrefloc, rtx ad,
 		  /* TEM is not the same as what we'll be replacing the
 		     pseudo with after reload, put a USE in front of INSN
 		     in the final reload pass.  */
-		  if (replace_reloads
-		      && num_not_at_initial_offset
+		  if (num_not_at_initial_offset
 		      && ! rtx_equal_p (tem, reg_equiv_mem (regno)))
 		    {
-		      *loc = tem;
-		      /* We mark the USE with QImode so that we
-			 recognize it as one that can be safely
-			 deleted at the end of reload.  */
-		      PUT_MODE (emit_insn_before (gen_rtx_USE (VOIDmode, ad),
-						  insn), QImode);
+		      if (replace_reloads)
+			{
+			  *loc = tem;
+			  /* We mark the USE with QImode so that we
+			     recognize it as one that can be safely
+			     deleted at the end of reload.  */
+			  PUT_MODE (emit_insn_before (gen_rtx_USE (VOIDmode,
+								   ad),
+						      insn), QImode);
 
-		      /* This doesn't really count as replacing the address
-			 as a whole, since it is still a memory access.  */
+			  /* This doesn't really count as replacing the
+			     address as a whole, since it is still a memory
+			     access.  */
+			  return 0;
+			}
+
+		      /* Not the final pass, so the substitution above
+			 can't be done yet (the elimination offsets may
+			 still change while reload iterates) -- but it must
+			 be done eventually: reload () finishes by turning
+			 every spilled pseudo into its reg_equiv_mem in
+			 place, and that address was computed at the
+			 eliminable registers' *initial* offsets, which is
+			 exactly what TEM differs from here (e.g. a
+			 stack-pointer-relative argument slot read while
+			 pushed call arguments are still outstanding, with
+			 -fdefer-pop).  reload_as_needed only revisits insns
+			 that this pass flagged as needing a reload, an
+			 elimination, or an operand change; returning 0 here
+			 would flag none of those, the pseudo would be left
+			 in place, and the final substitution would silently
+			 use the wrong offset.  So push an *optional* reload
+			 of the address: it costs nothing here (optional
+			 reloads take no part in the spill-register
+			 computation), but it makes this an insn the final
+			 pass looks at again, where the branch above then
+			 does the substitution and no reload results.  */
+		      push_reload (ad, NULL_RTX, loc, (rtx*) 0,
+				   base_reg_class (mode, as, MEM, SCRATCH,
+						   insn),
+				   GET_MODE (ad), VOIDmode, 0, 1, opnum, type);
 		    }
 		  return 0;
 		}
