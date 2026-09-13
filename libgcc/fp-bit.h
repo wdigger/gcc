@@ -302,6 +302,58 @@ typedef unsigned int UTItype __attribute__ ((mode (TI)));
 # define D_T_BITOFF (__LDBL_MANT_DIG__-1+10-(52+8))
 #endif
 
+#ifdef __pdp11__
+/* The PDP-11 float formats are DEC's, not IEEE's: see pdp11_f_format and
+   pdp11_d_format in gcc/config/pdp11/pdp11.cc.  The shape is the same --
+   a sign, then an exponent, then a fraction with a hidden leading one --
+   so the code here needs different numbers rather than different logic,
+   plus the knowledge that neither format has an infinity, a NaN or a
+   denormal, which leaves the two extreme exponent values meaning nothing
+   in particular.  Without these overrides the whole file computes in IEEE
+   and the answers come out scaled by a power of two in single precision
+   and meaningless in double.
+
+   Single precision differs from IEEE single only in the bias, which is
+   over a fraction taken as lying in [0.5, 1) rather than [1, 2).  Double
+   precision differs more: the exponent is 8 bits wide, as in single
+   precision, and the fraction takes the other 55.
+
+   The words of a double are stored most significant first, which is how
+   this machine stores a 64-bit integer too, so the two halves must not be
+   swapped the way a mismatch of word orders would otherwise call for.  */
+
+#undef FLOAT_WORD_ORDER_MISMATCH
+
+#undef EXPBIAS
+#define EXPBIAS 129
+
+/* Both halves of the float to double conversion need this, and that is
+   compiled once in each of the two configurations, so it cannot sit in
+   the double-only part below.  */
+#undef F_D_BITOFF
+#define F_D_BITOFF (55+7-(23+7))
+
+#if !defined (FLOAT) && !defined (TFLOAT)
+#undef NGARDS
+#define NGARDS    7L
+#undef GARDROUND
+#define GARDROUND 0x3f
+#undef GARDMASK
+#define GARDMASK  0x7f
+#undef GARDMSB
+#define GARDMSB   0x40
+#undef EXPBITS
+#define EXPBITS 8
+#undef FRACBITS
+#define FRACBITS 55
+#undef EXPMAX
+#define EXPMAX (0xff)
+#endif /* double */
+
+#define NO_DENORMALS 1
+#define NO_SPECIAL_EXPONENTS 1
+#endif /* __pdp11__ */
+
 
 #define NORMAL_EXPMIN (-(EXPBIAS)+1)
 #define IMPLICIT_1 ((fractype)1<<(FRACBITS+NGARDS))

@@ -283,11 +283,22 @@ pack_d (const fp_number_type *src)
 	  fraction >>= NGARDS;
 #endif /* NO_DENORMALS */
 	}
+#ifdef NO_SPECIAL_EXPONENTS
+      /* The largest exponent is an ordinary one in this format, so the
+	 range reaches one octave further up, and there is no infinity to
+	 overflow into: stop at the largest finite magnitude instead.  */
+      else if (__builtin_expect (src->normal_exp > EXPMAX - EXPBIAS, 0))
+	{
+	  exp = EXPMAX;
+	  fraction = (((fractype) 1 << FRACBITS) - 1);
+	}
+#else
       else if (__builtin_expect (src->normal_exp > EXPBIAS, 0))
 	{
 	  exp = EXPMAX;
 	  fraction = 0;
 	}
+#endif
       else
 	{
 	  exp = src->normal_exp + EXPBIAS;
@@ -525,6 +536,7 @@ unpack_d (FLO_union_type * src, fp_number_type * dst)
 	  dst->fraction.ll = fraction;
 	}
     }
+#ifndef NO_SPECIAL_EXPONENTS
   else if (__builtin_expect (exp == EXPMAX, 0))
     {
       /* Huge exponent*/
@@ -554,6 +566,7 @@ unpack_d (FLO_union_type * src, fp_number_type * dst)
 	  dst->fraction.ll = fraction << NGARDS;
 	}
     }
+#endif /* !NO_SPECIAL_EXPONENTS */
   else
     {
       /* Nothing strange about this number */
