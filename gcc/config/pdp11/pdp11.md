@@ -374,7 +374,7 @@
   return "";
 }
   [(set (attr "length")
-	(symbol_ref "pdp11_cmp_length (operands, 2)"))
+	(symbol_ref "pdp11_cmp_length (operands, 4)"))
    (set_attr "base_cost" "0")])
 
 ;; sob instruction
@@ -1865,7 +1865,14 @@
       operands[2] = negate_rtx (HImode, operands[2]);
       if (<QHSint:e_mname> == E_QImode)
         {
-          r = copy_to_mode_reg (HImode, gen_rtx_ZERO_EXTEND (HImode, operands[1]));
+          /* Sign extend, not zero extend: this is the arithmetic right
+             shift, and it is done here by handing the byte to the 16-bit
+             ASH, which shifts the whole word.  A byte widened with zeros
+             has no sign left for ASH to propagate, so every negative
+             value came back as though it had been shifted logically --
+             (signed char) -91 >> 4 giving 10 rather than -6.  The
+             logical shift below wants the zeros and says so itself.  */
+          r = copy_to_mode_reg (HImode, gen_rtx_SIGN_EXTEND (HImode, operands[1]));
           emit_insn (gen_aslhi_op (r, r, operands[2]));
           emit_insn (gen_movqi (operands[0], gen_rtx_SUBREG (QImode, r, 0)));
         }
@@ -1902,10 +1909,22 @@
              same instruction count), not a build failure, so this
              went unnoticed until traced back from a C testcase that
              compared (b >> 4) against its expected value.  */
-          rtx neg_amount = negate_rtx (HImode, operands[2]);
+          /* Widen with zeros and shift the word, but say so in the RTL
+             the optimizers get to see: hand the widened value to the
+             HImode logical shift rather than to ASH directly.  ASH is
+             described as a left shift by a negative count, and asked
+             about a left shift the optimizers rightly conclude that the
+             high bits of the input do not matter -- whereupon they
+             replaced the widening with a plain byte load, which on this
+             machine extends the sign.  (unsigned char) 0xa5 >> 4 then
+             came back as 0xfa rather than 0x0a, and only with
+             optimization on, the unoptimized code having kept the zeros.
+             A logical right shift says plainly that those bits matter,
+             so the widening survives.  */
+          rtx wide = gen_reg_rtx (HImode);
           r = copy_to_mode_reg (HImode, gen_rtx_ZERO_EXTEND (HImode, operands[1]));
-          emit_insn (gen_aslhi_op (r, r, neg_amount));
-          emit_insn (gen_movqi (operands[0], gen_rtx_SUBREG (QImode, r, 0)));
+          emit_insn (gen_lshrhi3 (wide, r, operands[2]));
+          emit_insn (gen_movqi (operands[0], gen_rtx_SUBREG (QImode, wide, 0)));
         }
       else
         {
