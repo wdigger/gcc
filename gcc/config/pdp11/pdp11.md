@@ -2463,7 +2463,7 @@
 		   (match_operand:HI 2 "general_operand" "rR,Qi")))
    (clobber (reg:CC CC_REGNUM))]
   "SUPP_INSN_ASH && reload_completed"
-  "ashc\t%2,%0\t; limit 2261"
+  "ashc\t%2,%0"
   [(set_attr "length" "2,4")
    (set_attr "base_cost" "8")])
 
