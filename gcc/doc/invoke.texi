@@ -30880,13 +30880,17 @@ point option of the PDP-11 line, the KE11-F on the PDP-11/35 and /40 and
 the KEV11 on the PDP-11/03; it covers the four basic operations on single
 precision values only, so conversions, comparisons and anything in
 @code{double} still go to the library.  FIS and FPP are alternatives, so
-this option cannot be combined with @option{-mfpu}.  It is off by
-default, and @option{-mno-fis} turns it back off, because availability is
-a property of the machine rather than of the processor: some machines
-emulate the four instruction codes in a monitor trap handler instead of
-executing them, and where nothing handles them the program dies.  Note
-also that FIS traps on overflow, underflow and division by zero, where
-the library routines return a value.
+asking for this option together with @option{-mfpu} is an error.
+
+Availability is a property of the machine rather than of the processor:
+some machines have none of the hardware but emulate the four instruction
+codes in a monitor trap handler, which is worth using anyway, and where
+nothing handles them at all the program dies.  So this is off by default
+everywhere except for the @samp{uknc} vendor, whose machine does emulate
+them; @option{-mno-fis} turns it off again, and is what to use when
+building for a machine that does not.  Note also that FIS traps on
+overflow, underflow and division by zero, where the library routines
+return a value.
 
 @opindex mac0
 @item -mac0

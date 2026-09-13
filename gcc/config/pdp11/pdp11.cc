@@ -2398,11 +2398,14 @@ pdp11_option_override (void)
      the PDP-11 line: a machine has the KE11-F/KEV11 four-instruction
      stack arithmetic, or an FP11 with its own accumulators, never both.
      They also disagree about what a float even is in a register, so
-     there is no way to mix their code in one compilation.  */
+     there is no way to mix their code in one compilation.  Asking for
+     both is an error -- but FIS being merely the default, as it is for
+     the UKNC, is not asking, so there -mfpu just wins.  */
   if (TARGET_FIS && TARGET_FPU)
     {
-      error ("%<-mfis%> and %<-mfpu%> are mutually exclusive; FIS and FPP "
-	     "are alternative PDP-11 floating point options, not a pair");
+      if (target_flags_explicit & MASK_FIS)
+	error ("%<-mfis%> and %<-mfpu%> are mutually exclusive; FIS and FPP "
+	       "are alternative PDP-11 floating point options, not a pair");
       target_flags &= ~MASK_FIS;
     }
 }

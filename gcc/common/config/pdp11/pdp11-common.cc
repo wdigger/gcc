@@ -111,10 +111,18 @@ pdp11_option_init_struct (struct gcc_options *opts)
 /* Real UKNC hardware has no FPU coprocessor, so -msoft-float is the
    correct default for this vendor (see config.gcc) -- unlike the
    generic pdp11 default below, which assumes an 11/45 with hardware
-   floating point.  -mfpu still works to override this explicitly.  */
+   floating point.  -mfpu still works to override this explicitly.
+
+   The FIS instructions, on the other hand, are worth having on by
+   default here.  The processor has no FIS hardware either, but the
+   machine's own software emulates the four instruction codes in a
+   HALT-mode trap handler, and going through that trap is still about
+   three times faster than calling the library.  -mno-fis turns them off
+   again, for a machine whose monitor does not do this, and -mfpu quietly
+   wins over the default rather than colliding with it.  */
 #undef TARGET_DEFAULT_TARGET_FLAGS
 #define TARGET_DEFAULT_TARGET_FLAGS \
-  (TARGET_UNIX_ASM_DEFAULT)
+  (MASK_FIS | TARGET_UNIX_ASM_DEFAULT)
 #else
 #undef TARGET_DEFAULT_TARGET_FLAGS
 #define TARGET_DEFAULT_TARGET_FLAGS \
