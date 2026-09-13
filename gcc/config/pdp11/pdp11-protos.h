@@ -36,6 +36,7 @@ extern int pdp11_initial_elimination_offset (int, int);
 extern enum reg_class pdp11_regno_reg_class (int);
 extern bool pdp11_fixed_cc_regs (unsigned int *, unsigned int *);
 extern machine_mode pdp11_cc_mode (enum rtx_code, rtx, rtx);
+extern void pdp11_expand_fis (enum rtx_code, rtx *);
 extern bool pdp11_expand_shift (rtx *, rtx (*) (rtx, rtx, rtx),
 				rtx (*) (rtx, rtx, rtx));
 extern const char * pdp11_assemble_shift (rtx *, machine_mode, int);

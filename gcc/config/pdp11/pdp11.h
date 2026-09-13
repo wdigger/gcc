@@ -48,6 +48,8 @@ along with GCC; see the file COPYING3.  If not see
 	builtin_define_with_int_value ("__pdp11_model", 10);	\
       if (TARGET_FPU)						\
 	builtin_define ("__pdp11_fpu");				\
+      if (TARGET_FIS)						\
+	builtin_define ("__pdp11_fis");				\
       if (TARGET_AC0)						\
 	builtin_define ("__pdp11_ac0");				\
     }						\

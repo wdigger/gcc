@@ -27,6 +27,10 @@
     UNSPECV_SETD
     UNSPECV_SETI
     UNSPECV_CPYMEM
+    UNSPECV_FIS_ADD
+    UNSPECV_FIS_SUB
+    UNSPECV_FIS_MUL
+    UNSPECV_FIS_DIV
   ])
 
 (define_constants
@@ -81,6 +85,19 @@
 (define_mode_iterator QHSDint [QI HI SI DI])
 
 (define_code_iterator SHF [ashift ashiftrt lshiftrt])
+
+;; The four FIS operations.  The expanders iterate over the rtx codes to
+;; get their standard names; the insns themselves hold no arithmetic, just
+;; an unspec, so they iterate over the four unspec numbers instead.
+(define_code_iterator FIS [plus minus mult div])
+(define_code_attr fisop [(plus "add") (minus "sub") (mult "mul") (div "div")])
+
+(define_int_iterator FISV [UNSPECV_FIS_ADD UNSPECV_FIS_SUB
+			   UNSPECV_FIS_MUL UNSPECV_FIS_DIV])
+(define_int_attr fisname [(UNSPECV_FIS_ADD "add") (UNSPECV_FIS_SUB "sub")
+			  (UNSPECV_FIS_MUL "mul") (UNSPECV_FIS_DIV "div")])
+(define_int_attr fisinsn [(UNSPECV_FIS_ADD "fadd") (UNSPECV_FIS_SUB "fsub")
+			  (UNSPECV_FIS_MUL "fmul") (UNSPECV_FIS_DIV "fdiv")])
 
 (define_mode_iterator PDPfp [SF DF])
 
@@ -1089,6 +1106,60 @@
    (set_attr "base_cost" "12")])
 
 
+;;- FIS single precision arithmetic
+;;
+;; FIS -- the KE11-F option of the PDP-11/35 and /40, the KEV11 of the
+;; PDP-11/03 -- has no floating point registers at all.  A general
+;; register points at a two-element stack of single precision values: the
+;; right operand at (R), the left one at (R)+4, the result replaces the
+;; left operand, and R is then incremented by 4, so that it ends up
+;; pointing at the result.  Only the four basic operations exist, only in
+;; single precision, which is why these are the only FIS patterns: every
+;; conversion and comparison still goes to the library.
+;;
+;; The memory traffic is described loosely on purpose.  The insn reads a
+;; BLKmode MEM through the pointer, which is what keeps the stores of the
+;; operands from looking dead, and clobbers all of memory, which keeps
+;; anything from moving across it.  Naming the two slots exactly would
+;; mean writing down stack addresses that reload is still free to rewrite.
+
+(define_expand "<fisop>sf3"
+  [(set (match_operand:SF 0 "nonimmediate_operand" "")
+	(FIS:SF (match_operand:SF 1 "general_operand" "")
+		(match_operand:SF 2 "general_operand" "")))]
+  "TARGET_FIS && !TARGET_FPU"
+{
+  pdp11_expand_fis (<CODE>, operands);
+  DONE;
+})
+
+(define_insn_and_split "fis_<fisname>"
+  [(set (match_operand:HI 0 "register_operand" "+r")
+	(plus:HI (match_dup 0) (const_int 4)))
+   (unspec_volatile [(mem:BLK (match_dup 0))] FISV)
+   (clobber (mem:BLK (scratch)))]
+  "TARGET_FIS"
+  "#"
+  "&& reload_completed"
+  [(parallel [(set (match_dup 0) (plus:HI (match_dup 0) (const_int 4)))
+	      (unspec_volatile [(mem:BLK (match_dup 0))] FISV)
+	      (clobber (mem:BLK (scratch)))
+	      (clobber (reg:CC CC_REGNUM))])]
+  ""
+  [(set_attr "length" "2")
+   (set_attr "base_cost" "40")])
+
+(define_insn "fis_<fisname>_nocc"
+  [(set (match_operand:HI 0 "register_operand" "+r")
+	(plus:HI (match_dup 0) (const_int 4)))
+   (unspec_volatile [(mem:BLK (match_dup 0))] FISV)
+   (clobber (mem:BLK (scratch)))
+   (clobber (reg:CC CC_REGNUM))]
+  "TARGET_FIS && reload_completed"
+  "<fisinsn>\t%0"
+  [(set_attr "length" "2")
+   (set_attr "base_cost" "40")])
+
 ;;- arithmetic instructions
 ;;- add instructions
 

@@ -1954,6 +1954,51 @@ pdp11_small_shift (int n)
   return (unsigned) n < 4;
 }
 
+/* Expand addsf3, subsf3, mulsf3 or divsf3 as a FIS instruction.  CODE is
+   the arithmetic code, OPERANDS[0] is the result and OPERANDS[1] and [2]
+   are the left and right operand.
+
+   FIS reads both operands from memory, as a two-element stack addressed
+   by a general register: the right operand at (R), the left one at (R)+4.
+   The result replaces the left operand and R is incremented by 4, so
+   afterwards R points at the result.
+
+   The "stack" is just memory, so this uses a stack temporary rather than
+   real pushes.  Pushing would move the stack pointer in the middle of a
+   function, and since floats never live in registers here the operands
+   themselves are very often stack addresses, whose displacements would
+   then all have to be corrected.  */
+void
+pdp11_expand_fis (enum rtx_code code, rtx *operands)
+{
+  rtx slot, left, right, ptr;
+
+  /* Eight bytes: the right operand, then the left one above it.  */
+  slot = assign_stack_temp (DFmode, 8);
+  right = adjust_address (slot, SFmode, 0);
+  left = adjust_address (slot, SFmode, 4);
+
+  /* These are ordinary SFmode moves, split into two word moves by the
+     generic code because this machine has no SFmode move of its own
+     without an FPU.  They work for a constant operand as well.  */
+  emit_move_insn (left, operands[1]);
+  emit_move_insn (right, operands[2]);
+
+  ptr = copy_addr_to_reg (XEXP (slot, 0));
+
+  switch (code)
+    {
+    case PLUS:  emit_insn (gen_fis_add (ptr)); break;
+    case MINUS: emit_insn (gen_fis_sub (ptr)); break;
+    case MULT:  emit_insn (gen_fis_mul (ptr)); break;
+    case DIV:   emit_insn (gen_fis_div (ptr)); break;
+    default:    gcc_unreachable ();
+    }
+
+  /* The result took the place of the left operand.  */
+  emit_move_insn (operands[0], left);
+}
+
 /* Expand a shift insn.  Returns true if the expansion was done,
    false if it needs to be handled by the caller.  */
 bool
@@ -2348,6 +2393,18 @@ pdp11_option_override (void)
   if (!global_options_set.x_pdp11_model)
     pdp11_model = OPTION_MASK_1801BM2;
 #endif
+
+  /* FIS and FPP are the two mutually exclusive floating point options of
+     the PDP-11 line: a machine has the KE11-F/KEV11 four-instruction
+     stack arithmetic, or an FP11 with its own accumulators, never both.
+     They also disagree about what a float even is in a register, so
+     there is no way to mix their code in one compilation.  */
+  if (TARGET_FIS && TARGET_FPU)
+    {
+      error ("%<-mfis%> and %<-mfpu%> are mutually exclusive; FIS and FPP "
+	     "are alternative PDP-11 floating point options, not a pair");
+      target_flags &= ~MASK_FIS;
+    }
 }
 
 static void

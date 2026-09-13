@@ -75,6 +75,10 @@ mfpu
 Target RejectNegative Mask(FPU)
 Use hardware floating point.
 
+mfis
+Target Mask(FIS)
+Use the FIS floating point instructions for single precision arithmetic.
+
 mint16
 Target InverseMask(INT32, INT16)
 Use 16 bit int.
