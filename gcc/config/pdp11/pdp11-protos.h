@@ -42,6 +42,7 @@ extern bool pdp11_expand_shift (rtx *, rtx (*) (rtx, rtx, rtx),
 extern const char * pdp11_assemble_shift (rtx *, machine_mode, int);
 extern int pdp11_shift_length (rtx *, machine_mode, int, bool);
 extern int pdp11_cmp_length (rtx *, int);
+extern bool pdp11_cmp_lower_zero (rtx *, int);
 extern bool pushpop_regeq (rtx, int);
 extern bool pdp11_small_shift (int);
 

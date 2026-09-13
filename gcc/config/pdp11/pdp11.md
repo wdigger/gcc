@@ -289,9 +289,9 @@
   else
    output_asm_insn ("cmp\t%0,%1", exops[1]);
    
-  // Correct V/N flags so signed comparisons work
+  /* Correct V/N flags so signed comparisons work.  */
   output_asm_insn ("cln", NULL);
-  if (!CONST_INT_P (exops[1][1]) || INTVAL (exops[1][1]) != 0) {
+  if (!pdp11_cmp_lower_zero (operands, 2)) {
    output_asm_insn ("clv", NULL);
    output_asm_insn ("bcc\t%l0", lb);
    output_asm_insn ("sen", NULL);
@@ -315,26 +315,59 @@
 {
   rtx inops[4];
   rtx exops[4][2];
-  rtx lb[1];
+  rtx lb[2];
   int i;
   
   inops[0] = operands[0];
   inops[1] = operands[1];
   pdp11_expand_operands (inops, exops, 2, 4, NULL, big);
   lb[0] = gen_label_rtx ();
+  lb[1] = gen_label_rtx ();
 
-  for (i = 0; i < 3; i++)
+  /* The most significant words carry the sign, so a signed comparison of
+     those is the comparison of the whole values and the condition codes
+     it leaves are the ones wanted.  The words below it are plain
+     magnitudes, and an unsigned comparison of them says which value is
+     the larger -- but it says so in C, where a signed branch will go
+     looking in N.  So every word but the first jumps to a fixup that
+     turns C into N, the same one cmpsi uses for its one lower word.
+     Without it, a positive value whose most significant word is zero and
+     whose next word has its top bit set, 0xd1cf7980 say, came out as
+     negative, which in turn made the soft float library get subtraction
+     of nearly equal numbers wrong.  */
+  if (CONST_INT_P (exops[0][1]) && INTVAL (exops[0][1]) == 0)
+    output_asm_insn ("tst\t%0", exops[0]);
+  else
+    output_asm_insn ("cmp\t%0,%1", exops[0]);
+  output_asm_insn ("bne\t%l0", lb);
+
+  for (i = 1; i < 3; i++)
     {
       if (CONST_INT_P (exops[i][1]) && INTVAL (exops[i][1]) == 0)
         output_asm_insn ("tst\t%0", exops[i]);
       else
         output_asm_insn ("cmp\t%0,%1", exops[i]);
-       output_asm_insn ("bne\t%l0", lb);
-     }
+      output_asm_insn ("bne\t%l1", lb);
+    }
   if (CONST_INT_P (exops[3][1]) && INTVAL (exops[3][1]) == 0)
    output_asm_insn ("tst\t%0", exops[3]);
   else
    output_asm_insn ("cmp\t%0,%1", exops[3]);
+
+  output_asm_label (lb[1]);
+  fputs (":\n", asm_out_file);
+
+  /* Correct V/N flags so signed comparisons work.  Comparing against
+     zero needs no more than clearing N: tst leaves C clear, and a value
+     whose higher words are zero is positive.  */
+  output_asm_insn ("cln", NULL);
+  if (!pdp11_cmp_lower_zero (operands, 4))
+    {
+      output_asm_insn ("clv", NULL);
+      output_asm_insn ("bcc\t%l0", lb);
+      output_asm_insn ("sen", NULL);
+    }
+
   output_asm_label (lb[0]);
    fputs (":\n", asm_out_file);
 

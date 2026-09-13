@@ -2206,7 +2206,37 @@ pdp11_cmp_length (rtx *operands, int words)
     }
 
   /* Deduct one word because there is no branch at the end.  */
-  return len - 2;
+  len -= 2;
+
+  /* Then add the fixup that turns the lower words' C into N, which both
+     the two-word and the four-word compare emit (see cmpsi and cmpdi):
+     one instruction when comparing against zero, four otherwise.  */
+  if (words > 1)
+    len += pdp11_cmp_lower_zero (operands, words) ? 2 : 8;
+
+  return len;
+}
+
+/* True if every word of OPERANDS[1] below the most significant one is the
+   constant zero.  Those are the words the C-to-N fixup looks at, and when
+   they are all zero the compare against them is a tst, which leaves C
+   clear, so clearing N is the whole of the fixup.  */
+bool
+pdp11_cmp_lower_zero (rtx *operands, int words)
+{
+  rtx inops[2];
+  rtx exops[4][2];
+  int i;
+
+  inops[0] = operands[0];
+  inops[1] = operands[1];
+  pdp11_expand_operands (inops, exops, 2, words, NULL, big);
+
+  for (i = 1; i < words; i++)
+    if (!CONST_INT_P (exops[i][1]) || INTVAL (exops[i][1]) != 0)
+      return false;
+
+  return true;
 }
 
 /* Prepend to CLOBBERS hard registers that are automatically clobbered
