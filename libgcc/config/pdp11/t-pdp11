@@ -6,7 +6,37 @@ LIB2ADD = $(srcdir)/divmod.c \
 	  $(srcdir)/memcmp.c \
 	  $(srcdir)/memcpy.c \
 	  $(srcdir)/memmove.c \
-	  $(srcdir)/memset.c
+	  $(srcdir)/memset.c \
+	  $(srcdir)/config/pdp11/fpconv-si.c \
+	  $(srcdir)/config/pdp11/fpconv-di.c \
+	  $(srcdir)/config/pdp11/fpconv-cmp.c
+
+# This target's float modes are the DEC formats, not IEEE, but fp-bit.c
+# is hardwired to IEEE.  Conversions between integers and single
+# precision build or take apart an exponent, so fp-bit's are wrong here
+# by the factor of four the two biases differ by; the two fpconv files
+# above have replacements, and fpconv.h explains the whole business.
+# _sf_to_usi goes too: its job is done by libgcc2's own __fixunssfsi,
+# which is built on top of __fixsfsi and a float add and so follows
+# along, and which until now was a second definition of the same name in
+# the archive.  Everything else fp-bit provides for single precision is
+# either right by accident (add and subtract, where the factor cancels)
+# or format-independent (negation).
+#
+# The 64-bit conversions come from libgcc2.c, which reaches single
+# precision by way of double and so inherits the much worse breakage of
+# the D format; fpconv-di.c replaces those as well, hence the four
+# _float/_fix names below.
+#
+# The comparisons go too, for a narrower reason: fp-bit reads an exponent
+# field of 255 as a NaN, where this format has an ordinary large value,
+# and then answers false to everything asked about it.  fpconv-cmp.c has
+# them.  _fpcmp_parts_sf stays: it is fp-bit's own helper, and with no
+# caller left nothing pulls it out of the archive.
+LIB2FUNCS_EXCLUDE = _si_to_sf _usi_to_sf _sf_to_si _sf_to_usi \
+		    _floatdisf _floatundisf _fixsfdi _fixunssfdi \
+		    _compare_sf _eq_sf _ne_sf _gt_sf _ge_sf _lt_sf _le_sf \
+		    _unord_sf
 
 # Small machine, optimize for size
 HOST_LIBGCC2_CFLAGS += -Os
