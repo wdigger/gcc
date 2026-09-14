@@ -2296,12 +2296,29 @@ pdp11_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 
   gcc_assert (!TARGET_SPLIT);
 
+  /* Volatile, because this memory is going to be executed rather than
+     read, and cse cannot tell the difference.  A call is
+     (call (mem:HI addr)), which looks exactly like a two-byte load from
+     the trampoline's first word -- so cse matched it against the store
+     below and replaced the call target with the value stored there,
+     012704.  The call then went to a constant pool entry holding that
+     number.  Marking the stores volatile keeps cse from knowing what is
+     in there.  */
   mem = adjust_address (m_tramp, HImode, 0);
+  MEM_VOLATILE_P (mem) = 1;
   emit_move_insn (mem, GEN_INT (012700+STATIC_CHAIN_REGNUM));
   mem = adjust_address (m_tramp, HImode, 2);
+  MEM_VOLATILE_P (mem) = 1;
   emit_move_insn (mem, chain_value);
   mem = adjust_address (m_tramp, HImode, 4);
+  MEM_VOLATILE_P (mem) = 1;
   emit_move_insn (mem, GEN_INT (000137));
+  /* Offset 6, not 4: the address is the jmp's operand word, and writing
+     it over the opcode left the trampoline with the function's address
+     as its first instruction.  Whatever that happened to decode to ran
+     instead of the function -- on the UKNC, a halt.  */
+  mem = adjust_address (m_tramp, HImode, 6);
+  MEM_VOLATILE_P (mem) = 1;
   emit_move_insn (mem, fnaddr);
 }
 
