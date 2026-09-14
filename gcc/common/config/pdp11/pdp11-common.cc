@@ -85,7 +85,11 @@ pdp11_handle_option (struct gcc_options *opts,
 
     case OPT_munix_asm:
     case OPT_mgnu_asm:
+      /* Only a.out leaves the GNU assembler with nothing to name a
+	 section with; see TARGET_RT11_ELF in pdp11.h.  */
+#if !TARGET_RT11_ELF
       targetm_common.have_named_sections = false;
+#endif
       return true;
 
     case OPT_mdec_asm:

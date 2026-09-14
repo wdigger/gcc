@@ -2441,14 +2441,23 @@ pdp11_option_override (void)
 }
 
 static void
-pdp11_asm_named_section (const char *name, unsigned int flags,
-			 tree decl ATTRIBUTE_UNUSED)
+pdp11_asm_named_section (const char *name, unsigned int flags, tree decl)
 {
   const char *rwro = (flags & SECTION_WRITE) ? "rw" : "ro";
   const char *insdat = (flags & SECTION_CODE) ? "i" : "d";
 
-  /* Only the DEC assembler has named sections (.psect); the GNU a.out
-     assembler has just .text/.data/.bss.  Anything that asks for a
+  /* With ELF objects, sections are ordinary: say so the ordinary way.
+     This is what makes -ffunction-sections/-fdata-sections possible,
+     and with them --gc-sections, which matters rather a lot on a
+     machine with 64K of address space.  */
+  if (TARGET_RT11_ELF && !TARGET_DEC_ASM)
+    {
+      default_elf_asm_named_section (name, flags, decl);
+      return;
+    }
+
+  /* Only the DEC assembler has named sections (.psect); the GNU
+     assembler writing a.out has just .text/.data/.bss.  Anything that asks for a
      named section anyway -- -flto's own .gnu.lto_* sections being the
      common case, but __attribute__((section)) reaches here too via a
      different diagnostic -- used to hit a gcc_assert here, i.e. an ICE

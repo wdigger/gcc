@@ -546,11 +546,14 @@ extern int current_first_parm_offset;
 #define DATA_SECTION_ASM_OP \
   ((TARGET_DEC_ASM) ? "\t.psect\tdata,d,rw,con" : "\t.data")
 
-/* Output before read-only data.  Same as read-write data for non-DEC
-   assemblers because they don't know about .rodata.  */
+/* Output before read-only data.  Same as read-write data for the GNU
+   assembler on a.out, which has nowhere else to put it; with ELF it
+   gets a section of its own, which is also what -fdata-sections needs
+   to build .rodata.<name> out of.  */
 
 #define READONLY_DATA_SECTION_ASM_OP \
-  ((TARGET_DEC_ASM) ? "\t.psect\trodata,d,ro,con" : "\t.data")
+  ((TARGET_DEC_ASM) ? "\t.psect\trodata,d,ro,con" \
+   : TARGET_RT11_ELF ? "\t.section\t.rodata" : "\t.data")
 
 /* How to refer to registers in assembler output.
    This sequence is indexed by compiler's hard-register-number (see above).  */
@@ -660,8 +663,21 @@ extern int current_first_parm_offset;
 
 #define COMPARE_FLAG_MODE HImode
 
-/* May be overridden by command option processing.  */
-#define TARGET_HAVE_NAMED_SECTIONS false
+/* Whether this target's objects are ELF.  The rt11 OS is the one that
+   is; a plain pdp11-*-aout target's objects are a.out, which has three
+   sections and no way to name a fourth.  Everything named-section here
+   turns on this, so it is worth a name of its own rather than asking
+   about the OS at each use.  */
+#ifdef TARGET_RT11_DEFAULTS
+#define TARGET_RT11_ELF 1
+#else
+#define TARGET_RT11_ELF 0
+#endif
+
+/* May be overridden by command option processing -- but only where
+   there is something to override: with ELF objects every assembler
+   this target has can name a section, so nothing turns this off.  */
+#define TARGET_HAVE_NAMED_SECTIONS (TARGET_RT11_ELF != 0)
 
 /* pdp11-unknown-aout target has no support of C99 runtime */
 #undef TARGET_LIBC_HAS_FUNCTION
