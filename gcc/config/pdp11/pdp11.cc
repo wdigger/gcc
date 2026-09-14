@@ -179,6 +179,23 @@ static bool pdp11_scalar_mode_supported_p (scalar_mode);
 #define TARGET_ASM_ALIGNED_HI_OP NULL
 #undef TARGET_ASM_ALIGNED_SI_OP
 #define TARGET_ASM_ALIGNED_SI_OP NULL
+
+/* DWARF reaches for its four-byte fields -- unit lengths, offsets into
+   other debug sections -- through the "unaligned" integer ops, which is
+   a different seam from the one ordinary data goes through.  That
+   distinction is what makes debug information possible here at all: a C
+   long on this machine is two words with the high one first, which is
+   why the aligned SI op stays NULL and varasm splits it into .word
+   directives, while a four-byte field of an ELF file is a plain
+   little-endian four-byte field and .long is exactly that.  Without
+   these, a -g compile ends in an internal error the moment dwarf2out
+   asks for four bytes it cannot split -- a label difference, say.  */
+#if TARGET_RT11_ELF
+#undef TARGET_ASM_UNALIGNED_HI_OP
+#define TARGET_ASM_UNALIGNED_HI_OP "\t.word\t"
+#undef TARGET_ASM_UNALIGNED_SI_OP
+#define TARGET_ASM_UNALIGNED_SI_OP "\t.long\t"
+#endif
 #undef TARGET_ASM_INTEGER
 #define TARGET_ASM_INTEGER pdp11_assemble_integer
 

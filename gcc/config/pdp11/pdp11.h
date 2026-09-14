@@ -344,6 +344,17 @@ extern int current_first_parm_offset;
 /* Offset of first parameter from the argument pointer register value.  */
 #define FIRST_PARM_OFFSET(FNDECL) 0
 
+/* Where the return address is when a function starts, and how far the
+   caller's stack pointer -- what DWARF calls the canonical frame
+   address -- is above it.  \`jsr pc,dst\` pushes the return address, so
+   on entry it is the word at (sp), and the caller's stack pointer was
+   the two bytes above.  Only the frame information uses these; without
+   them a -g compile stops with an internal error rather than a
+   diagnostic, since the default for the first of them is an
+   unreachable.  */
+#define INCOMING_RETURN_ADDR_RTX  gen_rtx_MEM (Pmode, stack_pointer_rtx)
+#define INCOMING_FRAME_SP_OFFSET  2
+
 /* Define how to find the value returned by a function.
    VALTYPE is the data type of the value (as a tree).
    If the precise function being called is known, FUNC is its FUNCTION_DECL;
@@ -704,4 +715,32 @@ extern int current_first_parm_offset;
    the full story and how to opt back into real %f/%e/%g support.  */
 #undef STARTFILE_SPEC
 #define STARTFILE_SPEC "crt0rt.o%s parse_args.o%s printf_float_stub.o%s"
+
+/* Debug information, which needs somewhere to live and so was not
+   possible at all until this target's objects became ELF.  It costs
+   nothing in the program: the debug sections are not allocated, so the
+   SAV image the machine loads does not contain them.
+
+   Addresses in it are four bytes, not the two a pointer here actually
+   takes.  That is what msp430 does as well, and the reason is worth
+   writing down: dwarf2asm.cc treats a relocatable field of
+   2 * DWARF2_ADDR_SIZE as the -gdwarf64-on-a-32-bit-target case and
+   emits it as "<low half>, 0", relocating only the low half.  With a
+   two-byte address size that rule catches every ordinary four-byte
+   DWARF32 offset, which then quietly works only for as long as the
+   offset fits in sixteen bits -- and stops assembling with "value too
+   large for field of 2 bytes" once a debug section grows past 64K.
+   Four sidesteps it, and costs nothing that matters: the debug sections
+   are not loaded.
+
+   See include/elf/pdp11.h in binutils for why a four-byte field in an
+   ELF file is plain little-endian on this machine even though a C long
+   is not.
+
+   Tested with #ifdef, not for a value, so a.out must not see it at
+   all.  */
+#define DWARF2_DEBUGGING_INFO 1
+#define DWARF2_ADDR_SIZE 4
+#undef PREFERRED_DEBUGGING_TYPE
+#define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
 #endif
