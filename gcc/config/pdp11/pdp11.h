@@ -749,6 +749,20 @@ extern int current_first_parm_offset;
    all.  */
 #define DWARF2_DEBUGGING_INFO 1
 #define DWARF2_ADDR_SIZE 4
+
+/* Weak symbols, which a.out has no way to represent and ELF does.  The
+   linker already does the rest: an undefined weak reference resolves to
+   zero instead of failing the link, and a strong definition anywhere
+   overrides the weak one.  Tested with #ifdef, so a.out must not see
+   it.  */
+#define ASM_WEAKEN_LABEL(FILE, NAME)	\
+  do					\
+    {					\
+      fputs ("\t.weak\t", (FILE));	\
+      assemble_name ((FILE), (NAME));	\
+      fputc ('\n', (FILE));		\
+    }					\
+  while (0)
 #undef PREFERRED_DEBUGGING_TYPE
 #define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
 #endif
