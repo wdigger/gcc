@@ -586,12 +586,27 @@
   "* return output_move_multiple (operands);"
   [(set_attr "length" "16,32")])
 
+;; Lengths are the worst case, which is what branch shortening needs:
+;; an underestimate makes the compiler believe a branch reaches when it
+;; does not, and the assembler used to encode the too-far branch without
+;; a word of complaint.  A word of this move costs 2 bytes plus one word
+;; for each operand that carries an index, an absolute address or an
+;; immediate, and output_move_multiple may add a sub before or an add
+;; after for an auto-decrement or auto-increment operand.  So, per
+;; alternative: register to register 2+2; small constant to register
+;; 4+4; small constant to memory 6+6; memory to memory 6+6 with up to
+;; two 4-byte adjustments.
+;;
+;; What the old figures missed was a constant stored to an indexed
+;; address: "clr 10(r4)" is 4 bytes but "mov $1234,12(r4)" is 6, so the
+;; pair is 10 where the attribute said 8.  newlib's libc/search/hash.c
+;; accumulated enough of those to put a branch 5 words out of reach.
 (define_insn "movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,g,g")
 	(match_operand:SI 1 "general_operand" "rN,IJ,IJ,g"))]
   ""
   ""
-  [(set_attr "length" "4,6,8,16")])
+  [(set_attr "length" "4,8,12,20")])
 
 (define_insn "*movsi_nocc"
   [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,g,g")
@@ -599,7 +614,7 @@
    (clobber (reg:CC CC_REGNUM))]
   ""
   "* return output_move_multiple (operands);"
-  [(set_attr "length" "4,6,8,16")])
+  [(set_attr "length" "4,8,12,20")])
 
 ;; That long string of "Z" constraints enforces the restriction that
 ;; a register source and auto increment or decrement destination must
