@@ -355,6 +355,14 @@ extern int current_first_parm_offset;
 #define INCOMING_RETURN_ADDR_RTX  gen_rtx_MEM (Pmode, stack_pointer_rtx)
 #define INCOMING_FRAME_SP_OFFSET  2
 
+/* defaults.h takes INCOMING_RETURN_ADDR_RTX to mean the whole of the
+   DWARF 2 frame unwinder is available too.  It is not: this target has
+   no __builtin_eh_return, and libgcc stops building unwind-dw2.o on
+   that the moment the assumption is left standing.  Frame information
+   in .debug_frame is unaffected -- it comes from the debug side, which
+   asks targetm.debug_unwind_info, not from this.  */
+#define DWARF2_UNWIND_INFO 0
+
 /* Define how to find the value returned by a function.
    VALTYPE is the data type of the value (as a tree).
    If the precise function being called is known, FUNC is its FUNCTION_DECL;

@@ -1302,6 +1302,16 @@ lto_build_c_type_nodes (void)
       uintmax_type_node = long_long_unsigned_type_node;
       signed_size_type_node = long_long_integer_type_node;
     }
+  else if (strcmp (SIZE_TYPE, "short unsigned int") == 0)
+    {
+      /* A machine whose int is as wide as its pointer can still spell
+	 size_t this way -- pdp11 does.  Without this the only way out of
+	 here is the gcc_unreachable below, so -flto ends in an internal
+	 compiler error before it compiles anything.  */
+      intmax_type_node = short_integer_type_node;
+      uintmax_type_node = short_unsigned_type_node;
+      signed_size_type_node = short_integer_type_node;
+    }
   else
     {
       int i;
