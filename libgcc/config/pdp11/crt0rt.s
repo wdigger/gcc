@@ -44,8 +44,11 @@ start:
         // and _end come from the linker script (ld/scripttempl/pdp11rt11.sc).
         mov   $__bss_start, r1
         mov   $_end, r2
+        // Addresses are unsigned: BHIS, not BGE.  With BGE a .bss that
+        // straddles 0100000 (32 KB) -- start below, end above -- compares
+        // as start >= end and is left uncleared.
 4$:     cmp   r1, r2
-        bge   5$
+        bhis  5$
         clrb  (r1)+
         br    4$
 5$:
