@@ -688,7 +688,7 @@ output_move_multiple (rtx *operands)
   rtx adjops[2];
 
   pdp11_action action[2];
-  int i, words;
+  int i, words, last;
 
   words = GET_MODE_BITSIZE (GET_MODE (operands[0])) / 16;
   adjops[1] = gen_rtx_CONST_INT (HImode, words * 2);
@@ -710,9 +710,40 @@ output_move_multiple (rtx *operands)
       output_asm_insn ("sub\t%1,%0", adjops);
     }
 
-  /* Do the words.  */
+  /* Do the words.  If the destination is a register group and the
+     source is memory addressed through one of those registers, the
+     word that lands in the base register has to go last -- otherwise
+     the words after it are fetched through a register already
+     overwritten.  pdp11_expand_operands handles the two-word case by
+     choosing which end to start from, but for four words the base can
+     sit in the middle of the group, where no order works and the
+     emission itself has to be permuted.
+
+     Only an address without side effects may be permuted: with an
+     auto-increment source every word shares one rtx and the order is
+     what advances the pointer.  Such an address cannot overlap a
+     register destination anyway -- that would be a second assignment
+     to the base in one insn, which auto-inc-dec.cc does not create.
+
+     pdp11_legitimate_address_p refuses (MEM (MEM ...)) for modes wider
+     than a word, so the address holds at most one register and at most
+     one word can match.  */
+  last = -1;
+  if (REG_P (operands[0]) && MEM_P (operands[1])
+      && !side_effects_p (XEXP (operands[1], 0)))
+    for (i = 0; i < words; i++)
+      if (REG_P (exops[i][0]) && MEM_P (exops[i][1])
+	  && reg_overlap_mentioned_p (exops[i][0], XEXP (exops[i][1], 0)))
+	{
+	  last = i;
+	  break;
+	}
+
   for (i = 0; i < words; i++)
-    output_asm_insn (singlemove_string (exops[i]), exops[i]);
+    if (i != last)
+      output_asm_insn (singlemove_string (exops[i]), exops[i]);
+  if (last >= 0)
+    output_asm_insn (singlemove_string (exops[last]), exops[last]);
 
   /* Check for increment after.  */
   if (action[0] == inc_after)
