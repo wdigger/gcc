@@ -332,7 +332,16 @@ static bool pdp11_scalar_mode_supported_p (scalar_mode);
 static inline bool
 pdp11_saved_regno (unsigned regno)
 {
-  return !call_used_or_fixed_reg_p (regno) && df_regs_ever_live_p (regno);
+  /* The frame pointer has to be saved whenever a frame pointer is
+     needed, and asking the dataflow whether it was ever live is not
+     the same question: LRA can decide late that a frame is needed --
+     an asm that clobbers the stack pointer is enough -- and nothing
+     goes back to mark the register live.  The prologue then builds a
+     frame in a call-saved register it never saved, and the epilogue
+     returns without putting it back.  */
+  return !call_used_or_fixed_reg_p (regno)
+	 && (df_regs_ever_live_p (regno)
+	     || (regno == HARD_FRAME_POINTER_REGNUM && frame_pointer_needed));
 }
 
 /* Expand the function prologue.  */
