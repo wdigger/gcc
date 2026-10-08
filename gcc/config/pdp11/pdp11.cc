@@ -2472,6 +2472,17 @@ pdp11_option_override (void)
 	       "are alternative PDP-11 floating point options, not a pair");
       target_flags &= ~MASK_FIS;
     }
+
+  /* This machine is programmed through its registers, and a register
+     is reached as a volatile bit-field more often than as anything
+     else.  Some of them latch on the write of a whole word, some
+     refuse a byte access outright, and none of them want the two byte
+     stores the middle-end is otherwise free to split a word write
+     into.  So keep a volatile bit-field access at the width it was
+     declared with, which is what -fstrict-volatile-bitfields asks for;
+     -fno-strict-volatile-bitfields still gets the other behaviour.  */
+  if (flag_strict_volatile_bitfields < 0)
+    flag_strict_volatile_bitfields = 1;
 }
 
 static void

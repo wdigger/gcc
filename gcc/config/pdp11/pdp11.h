@@ -152,6 +152,16 @@ extern const struct real_format pdp11_d_format;
    when given unaligned data.  */
 #define STRICT_ALIGNMENT 1
 
+/* A named bit-field aligns its structure to the field's declared type,
+   not to whatever container the bits happen to fit in.  This is the PCC
+   convention, and here it is what makes a volatile bit-field reach the
+   hardware as the width it was declared with: expmed.cc keeps a strict
+   volatile access at the declared mode only while the memory is aligned
+   for that mode, and without this a "volatile unsigned : 4" sits in a
+   byte-aligned container, so the access narrows to a byte.  Half this
+   machine's registers do not take a byte write.  */
+#define PCC_BITFIELD_TYPE_MATTERS true
+
 /* "HW_DIVIDE" actually means 64 by 32 bit divide.  While some PDP11
    models have hardware divide, it is for 32 by 16 bits only, so we
    call this platform "no hardware divide".  */
