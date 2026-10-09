@@ -263,6 +263,24 @@
    cmp<PDPint:isfx>\t%0,%1"
   [(set_attr "length" "2,2,4,4,4,6")])
 
+;; BIT computes src & dst for the condition codes alone, writing
+;; nothing back.  Without this pattern a bit test goes through AND,
+;; which this machine spells BIC -- so the mask has to be complemented
+;; and the result stored somewhere, costing an instruction and a
+;; register for a question that needs neither.
+;;
+;; N and Z come from the result and V is cleared, which is what CCNZ
+;; means; C is left alone, which is why this cannot be a CC-mode insn.
+(define_insn "*bit<mode>"
+  [(set (reg:CCNZ CC_REGNUM)
+	(compare:CCNZ (and:PDPint
+		         (match_operand:PDPint 0 "general_operand" "rR,rR,Q,Qi")
+		         (match_operand:PDPint 1 "general_operand" "rR,Qi,rR,Qi"))
+		      (const_int 0)))]
+  ""
+  "bit<PDPint:isfx>\t%0,%1"
+  [(set_attr "length" "2,4,4,6")])
+
 ;; Two word compare
 (define_insn "cmpsi"
   [(set (reg:CC CC_REGNUM)
@@ -492,6 +510,61 @@
 		      (label_ref (match_dup 3))
 		      (pc)))]
   "")
+
+;; A branch on (X & Y) against zero, which is what combine makes of
+;; "if (x & MASK)".  Split to BIT plus the branch rather than letting
+;; it reach the generic path, where the AND would be materialised
+;; first.
+(define_insn_and_split "*cbranch_bit<mode>"
+  [(set (pc)
+	(if_then_else (match_operator 0 "ccnz_operator"
+		       [(and:PDPint
+			   (match_operand:PDPint 1 "general_operand" "g")
+			   (match_operand:PDPint 2 "general_operand" "g"))
+			(const_int 0)])
+		      (label_ref (match_operand 3 "" ""))
+		      (pc)))]
+  ""
+  "#"
+  "reload_completed"
+  [(set (reg:CCNZ CC_REGNUM)
+	(compare:CCNZ (and:PDPint (match_dup 1) (match_dup 2))
+		      (const_int 0)))
+   (set (pc)
+	(if_then_else (match_op_dup 0
+		       [(reg:CCNZ CC_REGNUM) (const_int 0)])
+		      (label_ref (match_dup 3))
+		      (pc)))]
+  "")
+
+;; The same test written as one bit.  Combine canonicalises
+;; "if (x & (1 << N))" into a zero_extract rather than an AND, so
+;; without this the commonest form of all -- a flag bit in a device
+;; register -- would be the one case still going through BIC.
+;; BITS_BIG_ENDIAN is 0 here, so the position counts from the low end
+;; and the mask is 1 << pos.
+(define_insn_and_split "*cbranch_bit1<mode>"
+  [(set (pc)
+	(if_then_else (match_operator 0 "ccnz_operator"
+		       [(zero_extract:PDPint
+			   (match_operand:PDPint 1 "general_operand" "g")
+			   (const_int 1)
+			   (match_operand 2 "const_int_operand" "n"))
+			(const_int 0)])
+		      (label_ref (match_operand 3 "" ""))
+		      (pc)))]
+  ""
+  "#"
+  "reload_completed"
+  [(set (reg:CCNZ CC_REGNUM)
+	(compare:CCNZ (and:PDPint (match_dup 1) (match_dup 4))
+		      (const_int 0)))
+   (set (pc)
+	(if_then_else (match_op_dup 0
+		       [(reg:CCNZ CC_REGNUM) (const_int 0)])
+		      (label_ref (match_dup 3))
+		      (pc)))]
+  "operands[4] = GEN_INT ((HOST_WIDE_INT) 1 << INTVAL (operands[2]));")
 
 (define_insn_and_split "cbranch<mode>4"
   [(set (pc)
