@@ -24,12 +24,25 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 /* The machine's own DIV divides 32 bits by 16 and is signed, so
    anything wider or unsigned is a subroutine.  The four entry points
-   below share one loop: thirty-two shift-and-subtract steps, with the
-   dividend and the quotient in the same register pair -- the dividend
-   leaves R1 at the top as the quotient's bits enter at the bottom --
-   the running remainder in R4:R5 and the divisor in R2:R3.  Six
-   registers, nothing spilled, and no normalisation pass, which is what
-   makes this several times faster than the generic C in udivmodsi4.c.
+   below share two paths.
+
+   When the divisor fits a word -- 2 through 32767, which is what nearly
+   every division by a constant or an int looks like -- DIV does the work
+   in two passes: the dividend's high word first, then its low word with
+   that remainder in front of it.  The pair is shifted right by a bit
+   before the second pass, because the quotient would otherwise not fit a
+   word; afterwards the quotient is doubled and the bit that left is
+   returned to the remainder.  One is excluded because a quotient of
+   65535 does not fit the signed word DIV produces, and zero because
+   division by zero must fall through to the answer below.
+
+   Everything else goes through one loop: thirty-two shift-and-subtract
+   steps, with the dividend and the quotient in the same register pair --
+   the dividend leaves R1 at the top as the quotient's bits enter at the
+   bottom -- the running remainder in R4:R5 and the divisor in R2:R3.
+   Six registers, nothing spilled, and no normalisation pass, which is
+   what makes even this several times faster than the generic C in
+   udivmodsi4.c.
 
    The ABI is the compiler's own for a two-word type: the arguments are
    on the stack, high word first, and the result comes back in R0:R1
@@ -99,7 +112,44 @@ ___umodsi3:
 3:	bne	4f
 	tst	r3
 	beq	9f		/* divisor is zero: the answer is zero */
-4:	clr	r4		/* R4:R5 = running remainder */
+4:	tst	r2		/* is the divisor wider than a word? */
+	bne	11f
+	tst	r3
+	ble	11f		/* zero, or 32768 and up: not for DIV */
+	dec	r3
+	beq	15f		/* one: the quotient would not fit a word */
+	inc	r3
+
+	mov	r1, r4		/* R4 = dividend low */
+	mov	r0, r1		/* R0:R1 = 0:dividend high */
+	clr	r0
+	tst	r1
+	beq	12f		/* high word is zero: nothing to divide yet */
+	div	r3, r0
+12:	mov	r0, r2		/* R2 = quotient high */
+	mov	r1, r0		/* R0:R1 = remainder:dividend low */
+	mov	r4, r1
+	clr	r5
+	asr	r0		/* a bit right, or the quotient overflows */
+	ror	r1
+	ror	r5		/* the bit that left waits in R5's top */
+	div	r3, r0
+	asl	r0		/* twice the quotient ... */
+	asl	r1		/* ... and twice the remainder ... */
+	rol	r5		/* ... plus the bit that left */
+	adc	r1
+	cmp	r1, r3
+	blo	13f
+	sub	r3, r1		/* the remainder reached the divisor */
+	inc	r0
+13:	mov	r1, r5		/* leave it all where the loop would */
+	clr	r4
+	mov	r0, r1
+	mov	r2, r0
+	br	14f
+
+15:	inc	r3		/* the divisor was one: put it back */
+11:	clr	r4		/* R4:R5 = running remainder */
 	clr	r5
 
 5:	asl	r1		/* dividend out at the top, quotient in */
@@ -118,7 +168,7 @@ ___umodsi3:
 7:	decb	(sp)
 	bne	5b
 
-	tstb	10(sp)		/* quotient wanted? */
+14:	tstb	10(sp)		/* quotient wanted? */
 	beq	8f
 	mov	r5, r1		/* no: the remainder is the answer */
 	mov	r4, r0
