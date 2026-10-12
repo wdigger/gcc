@@ -1,12 +1,27 @@
-LIB2ADD = $(srcdir)/divmod.c \
-	  $(srcdir)/udivmod.c \
-	  $(srcdir)/udivmodsi4.c \
-	  $(srcdir)/udivhi3.c \
-	  $(srcdir)/udivmodhi4.c \
-	  $(srcdir)/memcmp.c \
+# The division helpers and three of the floating-point ones are
+# assembly here rather than the generic C: on a machine with six 16-bit
+# registers the C versions spill the multi-word values they work on to
+# the stack, and the 32-bit division pays for a normalisation pass the
+# assembly does without.  Measured on the machine, per operation:
+# __umodsi3 31535 ticks against 8477, __udivhi3 7011 against 2431,
+# __negsf2 6072 against 715, __extendsfdf2 20040 against 1007, and a
+# comparison 1729 against 748.  The answers are the same -- what these
+# replace is how the answer is reached, not what it is.
+#
+# Comparison is not among them, though the same hand-written set has one
+# and it is twice as quick: this format calls every number with a zero
+# exponent a zero, whatever its fraction, and -0.0 equal to 0.0, and a
+# comparison working on the words themselves answers neither of those
+# correctly.  fpconv-cmp.c handles both, and tests/float checks it.
+# fpconv-si.c stays for __fixsfsi and __pdp11_pack_f, which the
+# conversions in fpconv-di.c need.
+LIB2ADD = $(srcdir)/memcmp.c \
 	  $(srcdir)/memcpy.c \
 	  $(srcdir)/memmove.c \
 	  $(srcdir)/memset.c \
+	  $(srcdir)/config/pdp11/pdp11-divmod.S \
+	  $(srcdir)/config/pdp11/pdp11-udivmodhi.S \
+	  $(srcdir)/config/pdp11/pdp11-fpmisc.S \
 	  $(srcdir)/config/pdp11/fpconv-si.c \
 	  $(srcdir)/config/pdp11/fpconv-di.c \
 	  $(srcdir)/config/pdp11/fpconv-cmp.c
@@ -33,10 +48,15 @@ LIB2ADD = $(srcdir)/divmod.c \
 # and then answers false to everything asked about it.  fpconv-cmp.c has
 # them.  _fpcmp_parts_sf stays: it is fp-bit's own helper, and with no
 # caller left nothing pulls it out of the archive.
+#
+# Negation and the widening to double go the same way, to
+# pdp11-fpmisc.S: in this format the first is the sign bit flipped and
+# the second is two zero words appended, where fp-bit takes the number
+# apart and puts it back together again.
 LIB2FUNCS_EXCLUDE = _si_to_sf _usi_to_sf _sf_to_si _sf_to_usi \
 		    _floatdisf _floatundisf _fixsfdi _fixunssfdi \
 		    _compare_sf _eq_sf _ne_sf _gt_sf _ge_sf _lt_sf _le_sf \
-		    _unord_sf
+		    _unord_sf _negate_sf _sf_to_df
 
 # Small machine, optimize for size
 HOST_LIBGCC2_CFLAGS += -Os
