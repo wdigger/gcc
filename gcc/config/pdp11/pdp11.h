@@ -381,9 +381,19 @@ extern int current_first_parm_offset;
  (FLOAT_MODE_P (MODE) ? AC0_REGNUM : RETVAL_REGNUM)
 
 /* 1 if N is a possible register number for function argument passing.
-   - not used on pdp */
+   The two call-clobbered registers, and only where pdp11_arg_regs lets
+   the register convention be used at all.  */
 
-#define FUNCTION_ARG_REGNO_P(N) 0
+#define FUNCTION_ARG_REGNO_P(N) ((N) == 0 || (N) == 1)
+
+/* How many words of arguments that convention may carry, and so how
+   many registers starting at R0 it uses.  The pair is R0 and R1
+   because those are the two a caller does not expect to get back (see
+   CALL_USED_REGISTERS); a wider window would mean telling the generic
+   code, per call, that a call clobbers more than the standard
+   convention clobbers, and nothing here says that yet.  */
+
+#define PDP11_NARGREGS 2
 
 /* Define a data type for recording info about an argument list
    during the scan of that argument list.  This data type should
@@ -391,20 +401,28 @@ extern int current_first_parm_offset;
    and about the args processed so far, enough to enable macros
    such as FUNCTION_ARG to determine where the next arg should go.
 
-*/
+   Here that is how many of the argument registers are still free: the
+   stack offsets are the generic code's own business, and nothing in
+   this port reads them back.  */
 
-#define CUMULATIVE_ARGS int
+struct pdp11_args
+{
+  int regs_left;
+};
+
+#define CUMULATIVE_ARGS struct pdp11_args
 
 /* Initialize a variable CUM of type CUMULATIVE_ARGS
    for a call to a function whose data type is FNTYPE.
    For a library call, FNTYPE is 0.
 
-   ...., the offset normally starts at 0, but starts at 1 word
-   when the function gets a structure-value-address as an
-   invisible first argument.  */
+   FNDECL is the function being called, or null when the target of the
+   call is not a declaration this unit can see -- a library call, or a
+   call through a pointer.  Whether an argument may travel in a
+   register is decided from it, once per call, by pdp11_arg_regs.  */
 
-#define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
- ((CUM) = 0)
+#define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, FNDECL, N_NAMED_ARGS) \
+ ((CUM).regs_left = pdp11_arg_regs ((FNTYPE), (FNDECL)))
 
 /* Output assembler code to FILE to increment profiler label # LABELNO
    for profiling a function entry.  */

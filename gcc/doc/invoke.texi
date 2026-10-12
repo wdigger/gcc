@@ -1251,7 +1251,8 @@ Objective-C and Objective-C++ Dialects}.
 @gccoptlist{-mfpu  -msoft-float  -mfis  -mno-fis  -mac0  -mno-ac0
 -m40  -m45  -m10
 -mint32  -mno-int16  -mint16  -mno-int32
--msplit  -munix-asm  -mdec-asm  -mgnu-asm  -mlra}
+-msplit  -munix-asm  -mdec-asm  -mgnu-asm  -mlra
+-mreg-args  -mno-reg-args}
 
 @emph{PowerPC Options}
 See RS/6000 and PowerPC Options.
@@ -30944,6 +30945,16 @@ Use GNU assembler syntax.  This is the default.
 @item -mlra
 Use the new LRA register allocator.  By default, the old ``reload''
 allocator is used.
+
+@opindex mreg-args
+@opindex mno-reg-args
+@item -mreg-args
+Pass the first two words of a call's arguments in R0 and R1 where the
+called function is one the compiler can see every call to: a function
+local to the translation unit whose address is never taken.  Everything
+else keeps the standard convention, in which all arguments are pushed on
+the stack.  This is the default; @option{-mno-reg-args} passes every
+argument on the stack.
 @end table
 
 @node PowerPC Options

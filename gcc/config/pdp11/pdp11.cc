@@ -37,6 +37,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "regs.h"
 #include "emit-rtl.h"
 #include "recog.h"
+#include "cgraph.h"
 #include "conditions.h"
 #include "output.h"
 #include "stor-layout.h"
@@ -2362,12 +2363,100 @@ pdp11_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
   emit_move_insn (mem, fnaddr);
 }
 
+/* How many words of a call's arguments may be handed over in
+   registers: PDP11_NARGREGS, or none at all.
+
+   The standard convention of this machine is that arguments go on the
+   stack, and that is what every object this compiler did not just
+   produce expects -- the library, the assembly a program brings with
+   it, the modules a foreign assembler made.  A register convention can
+   only be used where both sides of the call are known to be compiled
+   the same way, and without a declared attribute to say so, that means
+   a function this unit can see every call to: FNDECL names it, its
+   address is never taken, and nothing outside can reach it.  The
+   cgraph flags below say exactly that, and they are what the x86 port
+   uses for the same purpose.
+
+   The answer has to come out the same when the caller is expanded and
+   when the callee is, which is why it is taken from the callee: the
+   optimisation level is read off the callee's own decl, since an
+   attribute can make the two differ.  */
+
+int
+pdp11_arg_regs (const_tree fntype, const_tree fndecl)
+{
+  cgraph_node *node;
+
+  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
+    return 0;
+
+  /* A variable argument list is walked as one block of stack, so the
+     named arguments in front of it cannot start in registers.  */
+  if (fntype != NULL_TREE && stdarg_p (fntype))
+    return 0;
+
+  node = cgraph_node::get (fndecl);
+  if (node != NULL)
+    node = node->function_symbol ();
+  if (node == NULL || !node->local || !node->can_change_signature)
+    return 0;
+
+  /* The optimisation level is read off the callee's own decl, because an
+     attribute can make the caller's differ and the two sides have to
+     reach the same answer.  -mreg-args needs no such care: this port has
+     no per-function target options for a pragma to change.  */
+  if (!TARGET_REG_ARGS || !opt_for_fn (node->decl, optimize))
+    return 0;
+
+  return PDP11_NARGREGS;
+}
+
+/* Where ARG goes: its size in words if it is to travel in registers,
+   with *REGNO (when REGNO is given) set to the first of them, and zero
+   if it belongs in memory.  */
+
+static int
+pdp11_arg_in_regs (CUMULATIVE_ARGS *cum, const function_arg_info &arg,
+		   unsigned int *regno)
+{
+  int words, first;
+
+  if (cum->regs_left == 0 || arg.end_marker_p ())
+    return 0;
+
+  /* Integers and pointers only.  A floating value would want the
+     floating registers, which the callee saves, and an aggregate is
+     passed as the block of memory it is.  */
+  if (!SCALAR_INT_MODE_P (arg.mode) || arg.aggregate_type_p ())
+    return 0;
+
+  words = CEIL (arg.promoted_size_in_bytes ().to_constant (), UNITS_PER_WORD);
+  first = PDP11_NARGREGS - cum->regs_left;
+
+  /* Two words or more have to start on an even register, which is what
+     pdp11_hard_regno_mode_ok allows, and have to fit whole: this
+     convention never splits an argument between a register and the
+     stack.  */
+  if (words > cum->regs_left || (words > 1 && (first & 1) != 0))
+    return 0;
+
+  if (regno != NULL)
+    *regno = first;
+  return words;
+}
+
 /* Worker function for TARGET_FUNCTION_ARG.  */
 
 static rtx
-pdp11_function_arg (cumulative_args_t, const function_arg_info &)
+pdp11_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
 {
-  return NULL_RTX;
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+  unsigned int regno;
+
+  if (pdp11_arg_in_regs (cum, arg, &regno) == 0)
+    return NULL_RTX;
+
+  return gen_rtx_REG (arg.mode, regno);
 }
 
 /* Worker function for TARGET_FUNCTION_ARG_ADVANCE.
@@ -2379,8 +2468,12 @@ pdp11_function_arg_advance (cumulative_args_t cum_v,
 			    const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+  int words = pdp11_arg_in_regs (cum, arg, NULL);
 
-  *cum += arg.promoted_size_in_bytes ();
+  /* Once one argument has gone to the stack the rest follow it, so
+     that what is left on the stack is the picture the standard
+     convention draws, minus a prefix.  */
+  cum->regs_left = (words == 0) ? 0 : cum->regs_left - words;
 }
 
 /* Make sure everything's fine if we *don't* have an FPU.

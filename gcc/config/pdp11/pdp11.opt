@@ -102,3 +102,7 @@ Use UNIX assembler syntax.
 mlra
 Target Mask(LRA)
 Use LRA register allocator.
+
+mreg-args
+Target Var(TARGET_REG_ARGS) Init(1)
+Pass the first arguments of a call in registers where both sides of the call are compiled together.

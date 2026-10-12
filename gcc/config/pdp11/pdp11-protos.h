@@ -48,6 +48,7 @@ extern bool pdp11_small_shift (int);
 
 #endif /* RTX_CODE */
 
+extern int pdp11_arg_regs (const_tree, const_tree);
 extern void output_ascii (FILE *, const char *, int);
 extern void pdp11_asm_output_var (FILE *, const char *, int, int, bool);
 extern void pdp11_expand_prologue (void);
