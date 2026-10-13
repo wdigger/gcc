@@ -1697,6 +1697,7 @@ GCC plugins may provide their own attributes.
 * MSP430 Function Attributes::
 * NDS32 Function Attributes::
 * Nvidia PTX Function Attributes::
+* PDP-11 Function Attributes::
 * PowerPC Function Attributes::
 * RISC-V Function Attributes::
 * RL78 Function Attributes::
@@ -5402,6 +5403,37 @@ library.
 By default functions are only callable only from other PTX functions.
 
 Kernel functions must have @code{void} return type.
+@end table
+
+@node PDP-11 Function Attributes
+@subsubsection PDP-11 Function Attributes
+
+These function attributes are supported by the PDP-11 back end:
+
+@table @code
+@cindex @code{regargs} function attribute, PDP-11
+@cindex @code{noregargs} function attribute, PDP-11
+@item regargs
+@itemx noregargs
+On this target the first two words of a call's arguments are passed in
+R0 and R1 where the compiler can see every call to the function -- see
+@option{-mreg-args} in @ref{PDP-11 Options} -- and on the stack
+otherwise.  These attributes say which convention to use outright, which
+is the only way to have the register one where the compiler cannot see
+the calls: a function from another translation unit, a function whose
+address is taken, or a call through a pointer.
+
+They belong to the function's type rather than to its declaration, so a
+pointer carries the convention with it and two types that disagree are
+not compatible -- assigning a @code{regargs} function to a plain
+function pointer is an error rather than a program that passes its
+arguments where nobody reads them.  For the same reason a declaration
+and the definition built from it must both carry the attribute.
+
+@code{regargs} cannot be used on a function with a variable argument
+list.  Neither attribute is affected by @option{-mno-reg-args}: a
+library and its header have to agree whatever flags either side is
+compiled with.
 @end table
 
 @node PowerPC Function Attributes

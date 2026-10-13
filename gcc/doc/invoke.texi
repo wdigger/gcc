@@ -30955,6 +30955,16 @@ local to the translation unit whose address is never taken.  Everything
 else keeps the standard convention, in which all arguments are pushed on
 the stack.  This is the default; @option{-mno-reg-args} passes every
 argument on the stack.
+
+Two things this option does not reach.  A function whose type carries
+the @code{regargs} or @code{noregargs} attribute (@pxref{PDP-11
+Function Attributes}) keeps what the attribute says, and so do the
+memory and string functions of the C library -- @code{memcpy},
+@code{memset}, @code{strlen} and the rest of that set -- which pass
+their first two words in registers always.  The compiler emits calls to
+those itself, from translation units that may never have declared them,
+so their convention cannot depend on what is visible or on how one side
+was compiled.
 @end table
 
 @node PowerPC Options

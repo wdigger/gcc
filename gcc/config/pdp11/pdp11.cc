@@ -219,6 +219,11 @@ static bool pdp11_scalar_mode_supported_p (scalar_mode);
 #undef  TARGET_MD_ASM_ADJUST
 #define TARGET_MD_ASM_ADJUST pdp11_md_asm_adjust
 
+#undef TARGET_ATTRIBUTE_TABLE
+#define TARGET_ATTRIBUTE_TABLE pdp11_attribute_table
+#undef TARGET_COMP_TYPE_ATTRIBUTES
+#define TARGET_COMP_TYPE_ATTRIBUTES pdp11_comp_type_attributes
+
 #undef TARGET_FUNCTION_ARG
 #define TARGET_FUNCTION_ARG pdp11_function_arg
 #undef TARGET_FUNCTION_ARG_ADVANCE
@@ -2363,6 +2368,147 @@ pdp11_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
   emit_move_insn (mem, fnaddr);
 }
 
+/* The "regargs" and "noregargs" attributes say outright what
+   pdp11_arg_regs works out for itself otherwise, and they are the only
+   way to put the register convention on a call this unit cannot see
+   whole: a function from another unit, one whose address is taken, a
+   call through a pointer.  They sit on the function's type rather than
+   on its declaration, so that a pointer carries the convention with it
+   and a disagreement is a type error instead of a program that quietly
+   passes its arguments where nobody reads them.  */
+
+static const struct attribute_spec::exclusions attr_regargs_exclusions[] =
+{
+  /* Attribute name, function, type, variable.  */
+  { "noregargs", true, true, true },
+  { NULL, false, false, false }
+};
+
+static const struct attribute_spec::exclusions attr_noregargs_exclusions[] =
+{
+  { "regargs", true, true, true },
+  { NULL, false, false, false }
+};
+
+static tree
+pdp11_handle_regargs_attribute (tree *node, tree name, tree, int,
+				bool *no_add_attrs)
+{
+  tree type = *node;
+
+  if (TREE_CODE (type) != FUNCTION_TYPE
+      && TREE_CODE (type) != FIELD_DECL
+      && TREE_CODE (type) != TYPE_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute only applies to functions",
+	       name);
+      *no_add_attrs = true;
+      return NULL_TREE;
+    }
+
+  /* A variable argument list is walked as one block of stack, so the
+     named arguments in front of it cannot start in registers.  Said out
+     loud rather than ignored: the declaration and the definition would
+     otherwise disagree about where the arguments are.  */
+  if (is_attribute_p ("regargs", name)
+      && TREE_CODE (type) == FUNCTION_TYPE
+      && stdarg_p (type))
+    {
+      error ("%qE attribute is not supported with a variable argument list",
+	     name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+TARGET_GNU_ATTRIBUTES (pdp11_attribute_table,
+{
+  /* { name, min_num_args, max_num_args, decl_req, type_req, fn_type_req,
+       affects_type_identity, handler, exclude } */
+  { "regargs",   0, 0, false, true, true, true,
+    pdp11_handle_regargs_attribute, attr_regargs_exclusions },
+  { "noregargs", 0, 0, false, true, true, true,
+    pdp11_handle_regargs_attribute, attr_noregargs_exclusions }
+});
+
+/* What a function type says about the register convention: the size of
+   the window, or -1 when it says nothing and pdp11_arg_regs is left to
+   work it out from the call itself.  */
+
+static int
+pdp11_declared_arg_regs (const_tree fntype)
+{
+  if (fntype == NULL_TREE)
+    return -1;
+  if (lookup_attribute ("noregargs", TYPE_ATTRIBUTES (fntype)))
+    return 0;
+  if (lookup_attribute ("regargs", TYPE_ATTRIBUTES (fntype)))
+    return PDP11_NARGREGS;
+  return -1;
+}
+
+/* Worker function for TARGET_COMP_TYPE_ATTRIBUTES.
+
+   Two function types are compatible only where they pass their
+   arguments the same way, so that a pointer to one cannot be used to
+   call the other.  */
+
+static int
+pdp11_comp_type_attributes (const_tree type1, const_tree type2)
+{
+  return pdp11_declared_arg_regs (type1) == pdp11_declared_arg_regs (type2);
+}
+
+/* The library functions whose argument convention is settled here
+   rather than worked out from the call.  Two reasons they cannot be
+   left to the attribute above.  The compiler calls some of them by
+   itself -- a structure assignment becomes memcpy, a fill becomes
+   memset -- and it does so from units that may never have seen a
+   declaration of them, so a convention carried by a header would not
+   reach those calls.  And a library is built once: the convention must
+   be the same wherever the name turns up, which is what a list of names
+   says and what an option cannot.  Both sides agree for the same
+   reason -- the definition in the library is recognised by its own name
+   when it is compiled.
+
+   The list is the hot memory and string set: arguments that are words
+   and pointers, and bodies short enough for the call itself to show in
+   a profile.  */
+
+static bool
+pdp11_regargs_libfunc_p (const_tree fndecl)
+{
+  static const char *const names[] = {
+    "memchr", "memcmp", "memcpy", "memmove", "memset",
+    "strcat", "strchr", "strcmp", "strcpy", "strlen",
+    "strncat", "strncmp", "strncpy", "strnlen", "strrchr"
+  };
+  tree id;
+  const char *name;
+  size_t i;
+
+  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
+    return false;
+
+  id = DECL_NAME (fndecl);
+  if (id == NULL_TREE)
+    return false;
+
+  /* The name as written, and the same name behind __builtin_: a call
+     the compiler puts there itself arrives as the built-in function, and
+     it is the library's one that answers it.  */
+  name = IDENTIFIER_POINTER (id);
+  if (strncmp (name, "__builtin_", strlen ("__builtin_")) == 0)
+    name += strlen ("__builtin_");
+
+  for (i = 0; i < ARRAY_SIZE (names); i++)
+    if (strcmp (name, names[i]) == 0)
+      return true;
+
+  return false;
+}
+
 /* How many words of a call's arguments may be handed over in
    registers: PDP11_NARGREGS, or none at all.
 
@@ -2386,13 +2532,27 @@ int
 pdp11_arg_regs (const_tree fntype, const_tree fndecl)
 {
   cgraph_node *node;
-
-  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
-    return 0;
+  int declared;
 
   /* A variable argument list is walked as one block of stack, so the
      named arguments in front of it cannot start in registers.  */
   if (fntype != NULL_TREE && stdarg_p (fntype))
+    return 0;
+
+  /* One of the library functions above: fixed, and for the same reason
+     not open to -mreg-args or to an attribute either.  */
+  if (pdp11_regargs_libfunc_p (fndecl))
+    return PDP11_NARGREGS;
+
+  /* Declared outright: that is the convention, whatever the call looks
+     like from here and whatever -mreg-args says.  A declaration and the
+     object built from it have to agree, and a flag on one of the two
+     compilations must not be able to part them.  */
+  declared = pdp11_declared_arg_regs (fntype);
+  if (declared >= 0)
+    return declared;
+
+  if (fndecl == NULL_TREE || TREE_CODE (fndecl) != FUNCTION_DECL)
     return 0;
 
   node = cgraph_node::get (fndecl);
